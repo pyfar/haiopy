@@ -10,28 +10,29 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = [ ]
+requirements = [
+    'sounddevice', 'numpy', 'pyfar']
 
-setup_requirements = ['pytest-runner', ]
+setup_requirements = ['pytest-runner']
 
-test_requirements = ['pytest>=3', ]
+test_requirements = ['pytest>=3']
+
+python_requirements = '>=3.7'
 
 setup(
     author="The pyfar developers",
     author_email='marco.berzborn@akustik.rwth-aachen.de',
-    python_requires='>=3.5',
+    python_requires=python_requirements,
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Scientists',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
     ],
-    description="Python package for handling playing back and recording audio data.",
+    description="Python package for handling playingback and recording.",
     install_requires=requirements,
     license="MIT license",
     long_description=readme + '\n\n' + history,
