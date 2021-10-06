@@ -3,3 +3,13 @@
 __author__ = """The pyfar developers"""
 __email__ = 'marco.berzborn@akustik.rwth-aachen.de'
 __version__ = '0.1.0'
+
+from .devices import AudioDevice
+from .io import Playback, Record, PlaybackRecord
+
+__all__ = [
+    'AudioDevice'
+    'Playback',
+    'Record',
+    'PlaybackRecord'
+    ]
