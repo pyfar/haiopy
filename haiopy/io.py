@@ -17,10 +17,7 @@ class _AudioIO(ABC):
     three sub-classes :py:class:`Playback`, :py:class:`Record`, and
     :py:class:`PlaybackRecord`.
     """
-    def __init__(
-            self,
-            device
-            ):
+    def __init__(self, device):
         if isinstance(device, devices._Device):
             self._device = device
         else:
@@ -44,28 +41,46 @@ class _AudioIO(ABC):
 
 
 class Playback(_AudioIO):
+    """Class for playback of signals.
+    """
     def __init__(
-            self,
-            device,
-            output_channels,
-            repetitions=1):
+            self, device, output_channels, repetitions=1,
+            output_signal=None):
+        """Create a Playback object.
+
+        Parameters
+        ----------
+        device : [type]
+            [description]
+        output_channels : [type]
+            [description]
+        repetitions : int, optional
+            [description], by default 1
+        """
         super().__init__(device=device)
+        # Set properties, check implicitly
         self.output_channels = output_channels
         self.repetitions = repetitions
-        self._output_signal = None
+        self.output_signal = output_signal
+        # Initialize device
+        self.device.initialize_playback(self.output_channels)
 
     @property
     def device(self):
+        """Output device."""
         return self._device
 
     @property
     def output_signal(self):
+        """``pyfar.Signal`` to be played back."""
         return self._output_signal
 
     @output_signal.setter
     def output_signal(self, signal):
-        """Set ``pyfar.Signal` to be played back."""
-        if not isinstance(signal, pf.Signal):
+        """Set ``pyfar.Signal`` to be played back."""
+        if signal is None:
+            self._output_signal = signal
+        elif not isinstance(signal, pf.Signal):
             raise ValueError("Output signal needs to be a pyfar.Signal.")
         elif signal.sampling_rate != self.device.sampling_rate:
             raise ValueError(
@@ -113,7 +128,8 @@ class Playback(_AudioIO):
     @repetitions.setter
     def repetitions(self, value):
         """Set the number of repetitions of the playback. ``repetitions`` can
-        be set to decimal numbers and ``numpy.inf``. The default is ``1``."""
+        be set to a decimal number. The default is ``1``,
+        which is a single playback."""
         try:
             value = float(value)
         except (ValueError, TypeError):
@@ -121,14 +137,20 @@ class Playback(_AudioIO):
         if value > 0:
             self._repetitions = value
         else:
-            raise ValueError("Repetitions must be positive or numpy.inf.")
+            raise ValueError("Repetitions must be positive.")
 
-    def start():
-        """ This function depends on the use case (playback, recording or
-        playback and record) and therefore is implemented in the subclasses.
-        """
-        # repetitions
-        pass
+    def start(self):
+        """Start the playback."""
+        if self.output_signal is None:
+            raise ValueError("To start the playback, first set an output "
+                             "signal.")
+        # Extract time data
+        data = self.output_signal.time
+        # Repeat and append
+        append_idx = int(self.repetitions % 1 * self.output_signal.n_samples)
+        data_out = np.tile(data, int(self.repetitions))
+        data_out = np.append(data_out, data[..., :append_idx], axis=-1)
+        self.device.playback(data_out)
 
 
 class Record(_AudioIO):
@@ -195,4 +217,3 @@ def record():
 
 def playback_record():
     pass
-
