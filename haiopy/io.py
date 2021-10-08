@@ -17,12 +17,26 @@ class _AudioIO(ABC):
     three sub-classes :py:class:`Playback`, :py:class:`Record`, and
     :py:class:`PlaybackRecord`.
     """
-    def __init__(self, device):
+    def __init__(self, device, blocking=False):
         if isinstance(device, devices._Device):
             self._device = device
+            self.blocking = blocking
         else:
             raise ValueError("Incorrect device, needs to be a"
                              ":py:class:`~haiopy.AudioDevice` object.")
+
+    @property
+    def blocking(self):
+        """Boolean parameter blocking."""
+        return self._blocking
+
+    @blocking.setter
+    def blocking(self, value):
+        """Set blocking parameter to True or False."""
+        if isinstance(value, bool):
+            self._blocking = value
+        else:
+            raise ValueError("Blocking needs to be True or False.")
 
     @abstractmethod
     def start():
@@ -31,9 +45,9 @@ class _AudioIO(ABC):
         """
         pass
 
-    def stop(device):
-        """ Immediately terminate the playback/recording."""
-        device.abort()
+    def stop(self):
+        """Immediately terminate the playback/recording."""
+        self._device.abort()
         print("Playback / Recording terminated.")
 
     def wait():
@@ -45,8 +59,8 @@ class Playback(_AudioIO):
     """
     def __init__(
             self, device, output_channels, repetitions=1,
-            output_signal=None):
-        """Create a Playback object.
+            output_signal=None, digital_level=0.):
+        """[summary]
 
         Parameters
         ----------
@@ -56,12 +70,17 @@ class Playback(_AudioIO):
             [description]
         repetitions : int, optional
             [description], by default 1
+        output_signal : [type], optional
+            [description], by default None
+        digital_level : [type], optional
+            [description], by default 0.
         """
         super().__init__(device=device)
         # Set properties, check implicitly
         self.output_channels = output_channels
         self.repetitions = repetitions
         self.output_signal = output_signal
+        self.digital_level = digital_level
         # Initialize device
         self.device.initialize_playback(self.output_channels)
 
@@ -94,8 +113,8 @@ class Playback(_AudioIO):
                 f"do not match.")
         elif signal.cshape != self.output_channels.shape:
             raise ValueError(
-                f"The cshape of the signal ({signal.cshape}) "
-                f"and the number of channels ({self.output_channels.shape}) "
+                f"The shapes of the signal ({signal.cshape}) "
+                f"and the channels ({self.output_channels.shape}) "
                 f"do not match.")
         else:
             self._output_signal = signal
@@ -139,6 +158,14 @@ class Playback(_AudioIO):
         else:
             raise ValueError("Repetitions must be positive.")
 
+    @property
+    def digital_level(self):
+        return self._digital_level
+
+    @digital_level.setter
+    def digital_level(self, value):
+        self._digital_level = value
+
     def start(self):
         """Start the playback."""
         if self.output_signal is None:
@@ -151,6 +178,7 @@ class Playback(_AudioIO):
         data_out = np.tile(data, int(self.repetitions))
         data_out = np.append(data_out, data[..., :append_idx], axis=-1)
         self.device.playback(data_out)
+        # TO DO: blocking, digital level
 
 
 class Record(_AudioIO):
