@@ -13,7 +13,7 @@ from haiopy import PlaybackRecord
 
 class TestPlayback():
     @mock.patch('haiopy.devices._Device', autospec=True)
-    def test__AudioIO_init_error(self, de):
+    def test__AudioIO_init_error(self, device_stub):
         """ Test error for instatiating abstract class"""
         with pytest.raises(TypeError):
             io._AudioIO(0)
@@ -30,18 +30,25 @@ class TestPlayback():
         assert pb._output_channels == output_channels
         assert pb._repetitions == 1
         assert pb._output_signal is None
+        assert pb._blocking is False
 
     def test_init_set_parameters(self, device_stub):
         output_channels = 2
         repetitions = 3
         signal = pf.signals.sine(100, 100)
+        digital_level = -10
+        blocking = True
         device_stub.sampling_rate = signal.sampling_rate
         device_stub.dtype = signal.dtype
-        pb = Playback(device_stub, output_channels, repetitions, signal)
+        pb = Playback(
+            device_stub, output_channels, repetitions, signal,
+            digital_level, blocking)
         assert pb._device == device_stub
         assert pb._output_channels == output_channels
         assert pb._repetitions == repetitions
         assert pb._output_signal == signal
+        assert pb._digital_level == digital_level
+        assert pb._blocking is blocking
 
     def test_init_device_error(self):
         device = 0
@@ -59,27 +66,30 @@ class TestPlayback():
         pb._output_channels = 1
         assert pb.output_channels == 1
 
-    def test_output_channels_setter(self, device_stub):
+    @pytest.mark.parametrize("channels", [1, [1, 2], np.array([1, 2]), (1, 2)])
+    def test_output_channels_setter(self, device_stub, channels):
         pb = Playback(device_stub, 0)
-        # Check allowed input formats
-        for ch in [1, [1, 2], np.array([1, 2]), (1, 2)]:
-            pb.output_channels = ch
-            assert np.all(pb._output_channels == ch)
-            assert len(pb._output_channels.shape) == 1
+        pb.output_channels = channels
+        assert np.all(pb._output_channels == channels)
+        assert len(pb._output_channels.shape) == 1
 
-    def test_output_channels_errors(self, device_stub):
+    @pytest.mark.parametrize(
+        "channels", [1.1, [1.1, 2], np.array([1.1, 2]), (1.1, 2)])
+    def test_output_channels_setter_errors(self, device_stub, channels):
         # non integer input
-        for ch in [1.1, [1.1, 2], np.array([1.1, 2]), (1.1, 2)]:
-            with pytest.raises(ValueError, match="integers"):
-                Playback(device_stub, ch)
+        with pytest.raises(ValueError, match="integers"):
+            Playback(device_stub, channels)
+
+    def test_output_channels_setter_errors_2D(self, device_stub):
         # array which is not 2D
         ch = np.array([[1, 2], [3, 4]])
         with pytest.raises(ValueError, match="1D array"):
             Playback(device_stub, ch)
-        # non unique values
-        for ch in [[1, 1], np.array([1, 1]), (1, 1)]:
-            with pytest.raises(ValueError, match="unique"):
-                Playback(device_stub, ch)
+
+    @pytest.mark.parametrize("channels", [[1, 1], np.array([1, 1]), (1, 1)])
+    def test_output_channels_setter_errors_unique(self, device_stub, channels):
+        with pytest.raises(ValueError, match="unique"):
+            Playback(device_stub, channels)
 
     def test_repetitions_getter(self, device_stub):
         pb = Playback(device_stub, 0)
@@ -91,14 +101,17 @@ class TestPlayback():
         pb.repetitions = 2
         assert pb._repetitions == 2
 
-    def test_repetitions_errors(self, device_stub):
+    @pytest.mark.parametrize("reps", ['a', [1], np.array([1, 2])])
+    def test_repetitions_setter_errors_scalar_number(self, device_stub, reps):
         pb = Playback(device_stub, 0)
-        for value in ['a', [1], np.array([1, 2])]:
-            with pytest.raises(ValueError, match="scalar number"):
-                pb.repetitions = value
-        for value in [0, -1]:
-            with pytest.raises(ValueError, match="positive"):
-                pb.repetitions = value
+        with pytest.raises(ValueError, match="scalar number"):
+            pb.repetitions = reps
+
+    @pytest.mark.parametrize("reps", [0, -1])
+    def test_repetitions_setter_errors_positive(self, device_stub, reps):
+        pb = Playback(device_stub, 0)
+        with pytest.raises(ValueError, match="positive"):
+            pb.repetitions = reps
 
     def test_output_signal_getter(self, device_stub):
         pb = Playback(device_stub, 0)
@@ -119,7 +132,7 @@ class TestPlayback():
         pb.output_signal = signal
         assert pb._output_signal == signal
 
-    def test_output_signal_errors(self, device_stub):
+    def test_output_signal_setter_errors(self, device_stub):
         device_stub.sampling_rate = 44100
         device_stub.dtype = np.float64
         pb = Playback(device_stub, 0)
@@ -145,23 +158,41 @@ class TestPlayback():
             signal = pf.Signal(np.array([[1, 2, 3]]), 44100)
             pb.output_signal = signal
 
-    def test_blocking_getter(self):
-        pass
+    def test_blocking_getter(self, device_stub):
+        pb = Playback(device_stub, 0)
+        pb._blocking = 1
+        assert pb.blocking == 1
 
-    def test_blocking_setter(self):
-        pass
+    def test_blocking_setter(self, device_stub):
+        pb = Playback(device_stub, 0)
+        pb.blocking = True
+        assert pb._blocking is True
 
-    def test_blocking_errors(self):
-        pass
+    def test_blocking_setter_errors(self, device_stub):
+        pb = Playback(device_stub, 0)
+        with pytest.raises(ValueError, match="True or False"):
+            pb.blocking = 1
 
-    def test_digital_level_getter(self):
-        pass
+    def test_digital_level_getter(self, device_stub):
+        pb = Playback(device_stub, 0)
+        pb._digital_level = 'a'
+        assert pb.digital_level == 'a'
 
-    def test_digital_levelsetter(self):
-        pass
+    def test_digital_level_setter(self, device_stub):
+        pb = Playback(device_stub, 0)
+        pb.digital_level = -10
+        assert pb._digital_level == -10
 
-    def test_digital_level_errors(self):
-        pass
+    @pytest.mark.parametrize("level", ['a', (1, 2), [1, 2], np.array([1, 2])])
+    def test_digital_level_setter_errors_number(self, device_stub, level):
+        pb = Playback(device_stub, 0)
+        with pytest.raises(ValueError, match="single number"):
+            pb.digital_level = level
+
+    def test_digital_level_setter_errors_positive(self, device_stub):
+        pb = Playback(device_stub, 0)
+        with pytest.raises(ValueError, match="<= 0"):
+            pb.digital_level = 10
 
     @pytest.mark.parametrize(
         "data, repetitions, expected",
@@ -172,7 +203,7 @@ class TestPlayback():
          np.array([[0., 1., 2., 3., 0., 1.]])),
          (np.array([[0, 1, 2], [3, 4, 5]]), 1.5,
          np.array([[0., 1., 2., 0.], [3., 4., 5., 3.]]))])
-    def test_start(self, device_stub, data, repetitions, expected):
+    def test_start_repetitions(self, device_stub, data, repetitions, expected):
         signal = pf.Signal(data, 44100)
         channels = np.arange(data.shape[0])
         device_stub.sampling_rate = signal.sampling_rate
@@ -181,6 +212,19 @@ class TestPlayback():
         with mock.patch.object(
                 device_stub, 'playback',
                 new=lambda x: npt.assert_array_equal(x, expected)):
+            pb.start()
+
+    def test_start_digital_level(self, device_stub):
+        signal = pf.Signal([1, 2, 3], 44100)
+        device_stub.sampling_rate = signal.sampling_rate
+        device_stub.dtype = signal.dtype
+        pb = Playback(
+            device=device_stub, output_channels=0, repetitions=2,
+            output_signal=signal, digital_level=-20)
+        expected = np.array([[.1, .2, .3, .1, .2, .3]])
+        with mock.patch.object(
+                device_stub, 'playback',
+                new=lambda x: npt.assert_allclose(x, expected, atol=1e-15)):
             pb.start()
 
     def test_start_missing_signal(self, device_stub):
@@ -193,12 +237,6 @@ class TestPlayback():
         with mock.patch.object(device_stub, 'abort') as abort_mock:
             pb.stop()
             abort_mock.assert_called_with()
-
-    def test_wait(self):
-        pass
-
-    def test_repetitions(self):
-        pass
 
 
 class TestRecord:

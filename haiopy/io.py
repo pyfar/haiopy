@@ -17,7 +17,7 @@ class _AudioIO(ABC):
     three sub-classes :py:class:`Playback`, :py:class:`Record`, and
     :py:class:`PlaybackRecord`.
     """
-    def __init__(self, device, blocking=False):
+    def __init__(self, device, blocking):
         if isinstance(device, devices._Device):
             self._device = device
             self.blocking = blocking
@@ -50,7 +50,7 @@ class _AudioIO(ABC):
         self._device.abort()
         print("Playback / Recording terminated.")
 
-    def wait():
+    def wait(self):
         pass
 
 
@@ -59,7 +59,7 @@ class Playback(_AudioIO):
     """
     def __init__(
             self, device, output_channels, repetitions=1,
-            output_signal=None, digital_level=0.):
+            output_signal=None, digital_level=0., blocking=False):
         """[summary]
 
         Parameters
@@ -75,7 +75,7 @@ class Playback(_AudioIO):
         digital_level : [type], optional
             [description], by default 0.
         """
-        super().__init__(device=device)
+        super().__init__(device=device, blocking=blocking)
         # Set properties, check implicitly
         self.output_channels = output_channels
         self.repetitions = repetitions
@@ -139,6 +139,9 @@ class Playback(_AudioIO):
         else:
             self._output_channels = channels_int
 
+        # Initialize device
+        self.device.initialize_playback(self._output_channels)
+
     @property
     def repetitions(self):
         """Number of repetitions of the playback."""
@@ -160,11 +163,21 @@ class Playback(_AudioIO):
 
     @property
     def digital_level(self):
+        """Digital output level in dB."""
         return self._digital_level
 
     @digital_level.setter
     def digital_level(self, value):
-        self._digital_level = value
+        """Set the digital output level in dB. The level is referenced to an
+         amplitude of 1, so only levels <= 0 dB can be set."""
+        try:
+            level = float(value)
+        except (ValueError, TypeError):
+            raise ValueError("The digital level must be single number.")
+        if level <= 0:
+            self._digital_level = level
+        else:
+            raise ValueError("The digital level must be <= 0.")
 
     def start(self):
         """Start the playback."""
@@ -173,12 +186,16 @@ class Playback(_AudioIO):
                              "signal.")
         # Extract time data
         data = self.output_signal.time
+        # Amplification / Attenuations
+        data = data * 10**(self._digital_level/20)
         # Repeat and append
         append_idx = int(self.repetitions % 1 * self.output_signal.n_samples)
         data_out = np.tile(data, int(self.repetitions))
         data_out = np.append(data_out, data[..., :append_idx], axis=-1)
         self.device.playback(data_out)
-        # TO DO: blocking, digital level
+        # Block
+        if self._blocking:
+            pass
 
 
 class Record(_AudioIO):
