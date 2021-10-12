@@ -51,7 +51,8 @@ class _AudioIO(ABC):
         print("Playback / Recording terminated.")
 
     def wait(self):
-        pass
+        """Wait until playback/recording is finished."""
+        self._device.wait()
 
 
 class Playback(_AudioIO):
@@ -60,20 +61,27 @@ class Playback(_AudioIO):
     def __init__(
             self, device, output_channels, repetitions=1,
             output_signal=None, digital_level=0., blocking=False):
-        """[summary]
+        """Create a Playback object.
 
         Parameters
         ----------
-        device : [type]
-            [description]
-        output_channels : [type]
-            [description]
+        device : haiopy.AudioDevice
+            The device to play the signal.
+        output_channels : array-like
+            The output channels. The parameter can be a single number, list,
+            tuple or a 1D array with unique values.
         repetitions : int, optional
-            [description], by default 1
-        output_signal : [type], optional
-            [description], by default None
-        digital_level : [type], optional
-            [description], by default 0.
+            Number of repitions, the default ``1``.
+        output_signal : pyfar.Signal, optional
+            The signal to be played. The default ``None``, requires the signal
+            to be set before :py:func:`~play` is called.
+        digital_level : float, optional
+            Digital output level (the digital output amplification) in dB
+            referenced to an amplitude of 1, so only levels <= 0 dB can be set.
+            The default is ``0``, which results in an unmodified playback.
+        blocking : bool, optional
+            If ``True`` :py:func:`~play` function doesn’t return until the
+            playback is finished. The default is ``False``.
         """
         super().__init__(device=device, blocking=blocking)
         # Set properties, check implicitly
@@ -195,7 +203,7 @@ class Playback(_AudioIO):
         self.device.playback(data_out)
         # Block
         if self._blocking:
-            pass
+            self.wait()
 
 
 class Record(_AudioIO):
@@ -205,8 +213,9 @@ class Record(_AudioIO):
             input_channels,
             duration=None,
             fft_norm='amplitude',
+            blocking=False
             ):
-        super().__init__(device=device)
+        super().__init__(device=device, blocking=blocking)
         self._input_signal = None
         self.input_channels = input_channels
 
@@ -235,15 +244,18 @@ class PlaybackRecord(Playback, Record):
             device,
             input_channels,
             output_channels,
+            blocking=False
             ):
         Record.__init__(
             self,
             device=device,
-            input_channels=input_channels)
+            input_channels=input_channels,
+            blocking=blocking)
         Playback.__init__(
             self,
             device=device,
-            output_channels=output_channels)
+            output_channels=output_channels,
+            blocking=blocking)
 
     def start():
         """ This function depends on the use case (playback, recording or

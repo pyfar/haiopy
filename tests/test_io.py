@@ -232,11 +232,20 @@ class TestPlayback():
         with pytest.raises(ValueError, match="set an output signal"):
             pb.start()
 
+    def test_start_blocking(self, device_stub):
+        signal = pf.Signal([1, 2, 3], 44100)
+        device_stub.sampling_rate = signal.sampling_rate
+        device_stub.dtype = signal.dtype
+        pb = Playback(device_stub, 0, output_signal=signal, blocking=True)
+        with mock.patch.object(device_stub, 'wait') as wait_mock:
+            pb.start()
+            wait_mock.assert_called_once()
+
     def test_stop(self, device_stub):
         pb = Playback(device_stub, 0)
         with mock.patch.object(device_stub, 'abort') as abort_mock:
             pb.stop()
-            abort_mock.assert_called_with()
+            abort_mock.assert_called_once()
 
 
 class TestRecord:
