@@ -17,7 +17,7 @@ setup_requirements = ['pytest-runner']
 
 test_requirements = ['pytest>=3']
 
-python_requirements = '>=3.7, <=3.8'
+python_requirements = '>=3.8'
 
 setup(
     author="The pyfar developers",
