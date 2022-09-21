@@ -1,4 +1,5 @@
 from multiprocessing import Event
+import asyncio
 from os import stat
 import sys
 import sounddevice as sd
@@ -6,6 +7,7 @@ import queue
 import numpy as np
 from arrayqueues import ArrayQueue
 from abc import (ABCMeta, abstractmethod, abstractproperty)
+from queue import Queue
 
 
 def list_devices():
@@ -53,13 +55,12 @@ class _Device(object):
 class AudioDevice(_Device):
     def __init__(
             self,
-            id,
+            id=sd.default.device,
             sampling_rate=44100,
             block_size=512,
             dtype='float32',
             latency=None,
             extra_settings=None,
-            # finished_callback=None,
             clip_off=None,
             dither_off=None,
             never_drop_input=None,
@@ -86,6 +87,8 @@ class AudioDevice(_Device):
             extra_settings=extra_settings,
             samplerate=sampling_rate)
 
+        self._loop = asyncio.get_event_loop()
+
         self.id = id
         self.dtype = dtype
         self._block_size = block_size
@@ -96,6 +99,7 @@ class AudioDevice(_Device):
         self._stream = None
 
         self._record_queue = None
+        self._playback_queue = None
         self.initialize_playback_queue()
 
         self._stream_finished = Event()
@@ -167,6 +171,7 @@ class AudioDevice(_Device):
 
     def finished_callback(self) -> None:
         """Custom callback after a audio stream has finished."""
+        print("I'm finished.")
         pass
 
     def _finished_callback(self) -> None:
@@ -231,8 +236,9 @@ class AudioDevice(_Device):
         n_channels_data = data.shape[0]
 
         # queue size in mega bytes
-        qsize = data.itemsize * data.size / 1000000
-        self.initialize_playback_queue(qsize)
+        # qsize = data.itemsize * data.size / 1000000
+        # self.initialize_playback_queue(qsize)
+        self.initialize_playback_queue(0)
         self.initialize_playback(n_channels_data)
         self.write_queue(data)
 
@@ -264,7 +270,7 @@ class AudioDevice(_Device):
         """
         if self._playback_queue is not None:
             self._playback_queue = None
-        self._playback_queue = ArrayQueue(qsize)
+        self._playback_queue = Queue(0)
 
     def write_queue(self, data):
         """Fill the playback queue with audio data.
@@ -282,7 +288,8 @@ class AudioDevice(_Device):
 
         for idb in range(n_blocks):
             sdx = np.arange(idb*self.block_size, (idb+1)*self.block_size)
-            if self._playback_queue.check_full():
+            # if self._playback_queue.check_full():
+            if self._playback_queue.full():
                 raise MemoryError(
                     "The input queue is full. ",
                     "Try initializing a larger queue.")
