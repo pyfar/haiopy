@@ -5,9 +5,11 @@ import sys
 import sounddevice as sd
 import queue
 import numpy as np
-from arrayqueues import ArrayQueue
+# from arrayqueues import ArrayQueue
 from abc import (ABCMeta, abstractmethod, abstractproperty)
 from queue import Queue
+
+from asyncio import Queue as AQueue
 
 
 def list_devices():
@@ -208,12 +210,22 @@ class AudioDevice(_Device):
             raise sd.CallbackAbort('Buffer underflow')
         assert not status
 
-        if self.playback_queue.empty():
-            print('Buffer is empty: Are we finished?', file=sys.stderr)
+        try:
+            outdata[:] = next(self.buffer_generator).T
+        except StopIteration:
             raise sd.CallbackStop("Buffer empty")
-        else:
-            data = self._playback_queue.get()
-            outdata[:] = data.T
+
+    def init_buffer_generator(self, data):
+
+        def buffer_generator():
+            n_blocks = int(np.floor(data.shape[-1]/self.block_size))
+
+            res = np.lib.stride_tricks.as_strided(
+                data, (*data.shape[:-1], n_blocks, self.block_size))
+            for i in range(n_blocks):
+                yield res[:, i, :]
+
+        self.buffer_generator = buffer_generator()
 
     def playback(self, data, start=True):
         """Playback an array of audio data.
