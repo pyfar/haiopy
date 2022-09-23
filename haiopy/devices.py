@@ -10,6 +10,7 @@ from abc import (ABCMeta, abstractmethod, abstractproperty)
 from queue import Queue
 
 from asyncio import Queue as AQueue
+from haiopy.generators import ArrayBuffer, InputArrayBuffer, OutputArrayBuffer
 
 
 def list_devices():
@@ -211,21 +212,43 @@ class AudioDevice(_Device):
         assert not status
 
         try:
-            outdata[:] = next(self.buffer_generator).T
+            outdata[:] = next(self._output_buffer).T
         except StopIteration:
             raise sd.CallbackStop("Buffer empty")
 
-    def init_buffer_generator(self, data):
+    def input_callback(self, indata, frames, time, status):
+        assert frames == self.block_size
+        if status.output_underflow:
+            print('Output underflow: increase blocksize?', file=sys.stderr)
+            raise sd.CallbackAbort('Buffer underflow')
+        assert not status
 
-        def buffer_generator():
-            n_blocks = int(np.floor(data.shape[-1]/self.block_size))
+        try:
+            next(self._input_buffer)[:] = indata.T
+        except StopIteration:
+            raise sd.CallbackStop("Buffer empty")
 
-            res = np.lib.stride_tricks.as_strided(
-                data, (*data.shape[:-1], n_blocks, self.block_size))
-            for i in range(n_blocks):
-                yield res[:, i, :]
+    def init_input_buffer_generator(self, data):
+        """Initialize the output buffer.
 
-        self.buffer_generator = buffer_generator()
+        Parameters
+        ----------
+        data : haiopy.ArrayBuffer, generator
+            The input buffer to which the input data is written block-wise.
+        """
+        self._input_buffer = ArrayBuffer(
+            self.block_size, data)
+
+    def init_output_buffer_generator(self, data):
+        """Initialize the output buffer.
+
+        Parameters
+        ----------
+        data : haiopy.ArrayBuffer, generator
+            The output buffer from which the output data is read block-wise.
+        """
+        self._output_buffer = ArrayBuffer(
+            self.block_size, data)
 
     def playback(self, data, start=True):
         """Playback an array of audio data.
@@ -256,14 +279,6 @@ class AudioDevice(_Device):
 
         if start is True:
             self.start()
-
-    def record(n_samples):
-        # stream start, read into the queue
-        pass
-
-    def playback_record(data):
-        # see combination above
-        pass
 
     @property
     def playback_queue(self):
@@ -327,6 +342,25 @@ class AudioDevice(_Device):
 
         self._stream = ostream
 
+    def initialize_record(self, n_channels):
+        """Initialize the playback stream for a given number of channels.
+
+        Parameters
+        ----------
+        n_channels : int
+            The number of output channels for which the stream is opened.
+        """
+        ostream = sd.InputStream(
+            self.sampling_rate,
+            self.block_size,
+            self.id,
+            n_channels,
+            self.dtype,
+            callback=self.input_callback,
+            finished_callback=self._finished_callback
+        )
+        self._stream = ostream
+
     def start(self):
         """Start the audio stream
         """
@@ -338,9 +372,6 @@ class AudioDevice(_Device):
                 print("Stream is already active.", file=sys.stderr)
         else:
             print("Stream is closed. Try re-initializing.", file=sys.stderr)
-
-    def initialize_record(channels):
-        raise NotImplementedError()
 
     def initialize_playback_record(input_channels, output_channels):
         raise NotImplementedError()
