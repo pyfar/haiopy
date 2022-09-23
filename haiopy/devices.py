@@ -3,13 +3,8 @@ import asyncio
 from os import stat
 import sys
 import sounddevice as sd
-import queue
-import numpy as np
-# from arrayqueues import ArrayQueue
 from abc import (ABCMeta, abstractmethod, abstractproperty)
-from queue import Queue
 
-from asyncio import Queue as AQueue
 from haiopy.generators import ArrayBuffer, InputArrayBuffer, OutputArrayBuffer
 
 
@@ -100,10 +95,8 @@ class AudioDevice(_Device):
 
         self._callback = None
         self._stream = None
-
-        self._record_queue = None
-        self._playback_queue = None
-        self.initialize_playback_queue()
+        self._input_buffer = None
+        self._output_buffer = None
 
         self._stream_finished = Event()
 
@@ -228,7 +221,7 @@ class AudioDevice(_Device):
         except StopIteration:
             raise sd.CallbackStop("Buffer empty")
 
-    def init_input_buffer_generator(self, data):
+    def init_input_buffer(self, data):
         """Initialize the output buffer.
 
         Parameters
@@ -239,7 +232,7 @@ class AudioDevice(_Device):
         self._input_buffer = ArrayBuffer(
             self.block_size, data)
 
-    def init_output_buffer_generator(self, data):
+    def init_output_buffer(self, data):
         """Initialize the output buffer.
 
         Parameters
@@ -249,78 +242,6 @@ class AudioDevice(_Device):
         """
         self._output_buffer = ArrayBuffer(
             self.block_size, data)
-
-    def playback(self, data, start=True):
-        """Playback an array of audio data.
-        This method initializes the playback device for the given audio
-        data and starts playback. After playback is finished, the device
-        is automatically stopped.
-
-        Parameters
-        ----------
-        data : array, float32, int8, int16, int32
-            Playback data with dimensions (n_channels, n_samples).
-        start : bool, optional
-            If ``True``, the playback is started right away, if ``False``.
-            The default is ``True``
-
-        """
-        if data.ndim > 2:
-            raise ValueError(
-                "The data cannot can not have more than 2 dimensions.")
-        n_channels_data = data.shape[0]
-
-        # queue size in mega bytes
-        # qsize = data.itemsize * data.size / 1000000
-        # self.initialize_playback_queue(qsize)
-        self.initialize_playback_queue(0)
-        self.initialize_playback(n_channels_data)
-        self.write_queue(data)
-
-        if start is True:
-            self.start()
-
-    @property
-    def playback_queue(self):
-        """The playback queue, storing audio data in blocks which is read
-        by the playback callback.
-        """
-        return self._playback_queue
-
-    def initialize_playback_queue(self, qsize=32):
-        """Initialize an empty playback queue.
-
-        Parameters
-        ----------
-        qsize : int, optional
-            The queue size in mega-bytes, by default 32
-        """
-        if self._playback_queue is not None:
-            self._playback_queue = None
-        self._playback_queue = Queue(0)
-
-    def write_queue(self, data):
-        """Fill the playback queue with audio data.
-
-        Parameters
-        ----------
-        data : array, float32, int32, int16, int8
-            The audio data as numpy array
-
-        """
-        if self._playback_queue is None:
-            raise ValueError("The Queue need to be initialized first.")
-
-        n_blocks = int(np.floor(data.shape[-1]/self.block_size))
-
-        for idb in range(n_blocks):
-            sdx = np.arange(idb*self.block_size, (idb+1)*self.block_size)
-            # if self._playback_queue.check_full():
-            if self._playback_queue.full():
-                raise MemoryError(
-                    "The input queue is full. ",
-                    "Try initializing a larger queue.")
-            self._playback_queue.put(data[..., sdx])
 
     def initialize_playback(self, n_channels):
         """Initialize the playback stream for a given number of channels.
@@ -337,9 +258,7 @@ class AudioDevice(_Device):
             n_channels,
             self.dtype,
             callback=self.output_callback,
-            finished_callback=self._finished_callback
-        )
-
+            finished_callback=self._finished_callback)
         self._stream = ostream
 
     def initialize_record(self, n_channels):
@@ -357,8 +276,7 @@ class AudioDevice(_Device):
             n_channels,
             self.dtype,
             callback=self.input_callback,
-            finished_callback=self._finished_callback
-        )
+            finished_callback=self._finished_callback)
         self._stream = ostream
 
     def start(self):
