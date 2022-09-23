@@ -1,6 +1,5 @@
 from multiprocessing import Event
-import asyncio
-from os import stat
+import numpy as np
 import sys
 import sounddevice as sd
 from abc import (ABCMeta, abstractmethod, abstractproperty)
@@ -135,7 +134,6 @@ class AudioDevice(_Device):
     @block_size.setter
     def block_size(self, block_size):
         self._block_size = block_size
-        self._stream.blocksize = block_size
         self.output_buffer.block_size = block_size
 
     @property
@@ -263,6 +261,7 @@ class AudioOutputDevice(AudioDevice):
             id=sd.default.device,
             sampling_rate=44100,
             block_size=512,
+            channels=[1],
             dtype='float32',
             output_buffer=None,
             latency=None,
@@ -270,8 +269,7 @@ class AudioOutputDevice(AudioDevice):
             clip_off=None,
             dither_off=None,
             never_drop_input=None,
-            prime_output_buffers_using_stream_callback=None
-            ):
+            prime_output_buffers_using_stream_callback=None):
         super().__init__(
             id=id,
             sampling_rate=sampling_rate,
@@ -287,8 +285,30 @@ class AudioOutputDevice(AudioDevice):
             extra_settings=extra_settings,
             samplerate=sampling_rate)
 
+        self._output_channels = channels
+
+        if output_buffer is None:
+            OutputArrayBuffer(
+                self.block_size,
+                np.zeros(
+                    (self.n_channels_output, self.block_size),
+                    dtype=self.dtype))
+        if output_buffer.data.shape[0] != self.n_channels_output:
+            raise ValueError(
+                "The shape of the buffer does not match the channel mapping")
+        self.output_buffer = output_buffer
+        self.initialize()
+
+    @property
+    def output_channels(self):
+        return self._output_channels
+
     @property
     def n_channels_output(self):
+        return len(self._output_channels)
+
+    @property
+    def max_channels_output(self):
         """The number of output channels supported by the device"""
         return sd.query_devices(self.id)['max_output_channels']
 
@@ -324,20 +344,27 @@ class AudioOutputDevice(AudioDevice):
         except StopIteration:
             raise sd.CallbackStop("Buffer empty")
 
-    def initialize_playback(self, n_channels):
-        """Initialize the playback stream for a given number of channels.
-
-        Parameters
-        ----------
-        n_channels : int
-            The number of output channels for which the stream is opened.
-        """
+    def initialize(self):
+        """Initialize the playback stream for a given number of channels."""
         ostream = sd.OutputStream(
             self.sampling_rate,
             self.block_size,
             self.id,
-            n_channels,
+            self.n_channels_output,
             self.dtype,
             callback=self.output_callback,
             finished_callback=self._finished_callback)
         self._stream = ostream
+
+    @property
+    def output_buffer(self):
+        return self._output_buffer
+
+    @output_buffer.setter
+    def output_buffer(self, buffer):
+        if buffer.block_size != self.block_size:
+            raise ValueError(
+                "The buffer's block size does not match. ",
+                f"Needs to be {self.block_size}")
+
+        self._output_buffer = buffer
