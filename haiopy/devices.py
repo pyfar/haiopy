@@ -18,6 +18,10 @@ class _Device(object):
         super().__init__()
 
     @abstractproperty
+    def id(sellf):
+        pass
+
+    @abstractproperty
     def name(self):
         pass
 
@@ -69,7 +73,7 @@ class AudioDevice(_Device):
         id = sd.query_devices(id)['name']
         self._name = sd.query_devices(id)['name']
 
-        self.id = id
+        self._id = id
         self.dtype = dtype
         self._block_size = block_size
         self._sampling_rate = sampling_rate
@@ -82,32 +86,36 @@ class AudioDevice(_Device):
 
         self._stream_finished = Event()
 
-    def check_settings(
-            self, sampling_rate, dtype, extra_settings,):
-        """Check if settings are compatible with the physical devices.
+    # def check_settings(
+    #         self, sampling_rate, dtype, extra_settings,):
+    #     """Check if settings are compatible with the physical devices.
 
-        Parameters
-        ----------
-        sampling_rate : int
-            The audio sampling rate
-        dtype : np.float32, np.int8, np.int16, np.int32
-            The audio buffer data type
-        extra_settings : extra settings
-            Audio API specific settings.
-        """
-        sd.check_input_settings(
-            device=self.id,
-            channels=self.n_channels_input,
-            dtype=dtype,
-            extra_settings=extra_settings,
-            samplerate=sampling_rate)
+    #     Parameters
+    #     ----------
+    #     sampling_rate : int
+    #         The audio sampling rate
+    #     dtype : np.float32, np.int8, np.int16, np.int32
+    #         The audio buffer data type
+    #     extra_settings : extra settings
+    #         Audio API specific settings.
+    #     """
+    #     sd.check_input_settings(
+    #         device=self.id,
+    #         channels=self.n_channels_input,
+    #         dtype=dtype,
+    #         extra_settings=extra_settings,
+    #         samplerate=sampling_rate)
 
-        sd.check_output_settings(
-            device=self.id,
-            channels=self.n_channels_output,
-            dtype=dtype,
-            extra_settings=extra_settings,
-            samplerate=sampling_rate)
+    #     sd.check_output_settings(
+    #         device=self.id,
+    #         channels=self.n_channels_output,
+    #         dtype=dtype,
+    #         extra_settings=extra_settings,
+    #         samplerate=sampling_rate)
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def name(self):
@@ -185,10 +193,10 @@ class AudioDevice(_Device):
             self.stream.stop()
 
 
-class AudioInputDevice(_Device):
+class AudioInputDevice(AudioDevice):
     def __init__(
             self,
-            id=sd.default.device,
+            id=sd.default.device['input'],
             sampling_rate=44100,
             block_size=512,
             dtype='float32',
@@ -211,6 +219,26 @@ class AudioInputDevice(_Device):
         sd.check_input_settings(
             device=id,
             channels=n_channels_input,
+            dtype=dtype,
+            extra_settings=extra_settings,
+            samplerate=sampling_rate)
+
+    def check_settings(
+            self, sampling_rate=None, dtype=None, extra_settings=None,):
+        """Check if settings are compatible with the physical devices.
+
+        Parameters
+        ----------
+        sampling_rate : int
+            The audio sampling rate
+        dtype : np.float32, np.int8, np.int16, np.int32
+            The audio buffer data type
+        extra_settings : extra settings
+            Audio API specific settings.
+        """
+        sd.check_input_settings(
+            device=self.id,
+            channels=self.n_channels_input,
             dtype=dtype,
             extra_settings=extra_settings,
             samplerate=sampling_rate)
@@ -258,7 +286,7 @@ class AudioOutputDevice(AudioDevice):
 
     def __init__(
             self,
-            id=sd.default.device,
+            id=sd.default.device['output'],
             sampling_rate=44100,
             block_size=512,
             channels=[1],
@@ -277,10 +305,12 @@ class AudioOutputDevice(AudioDevice):
             dtype=dtype,
             latency=latency)
 
-        n_channels_output = sd.query_devices(id)['max_output_channels']
+        # n_channels_output = sd.query_devices(id)['max_output_channels']
+        max_channel = np.max(channels)
+        n_channels = len(channels)
         sd.check_output_settings(
             device=id,
-            channels=n_channels_output,
+            channels=np.max([n_channels, max_channel]),
             dtype=dtype,
             extra_settings=extra_settings,
             samplerate=sampling_rate)
@@ -298,6 +328,26 @@ class AudioOutputDevice(AudioDevice):
                 "The shape of the buffer does not match the channel mapping")
         self.output_buffer = output_buffer
         self.initialize()
+
+    def check_settings(
+            self, sampling_rate=None, dtype=None, extra_settings=None):
+        """Check if settings are compatible with the physical devices.
+
+        Parameters
+        ----------
+        sampling_rate : int
+            The audio sampling rate
+        dtype : np.float32, np.int8, np.int16, np.int32
+            The audio buffer data type
+        extra_settings : extra settings
+            Audio API specific settings.
+        """
+        sd.check_output_settings(
+            device=self.id,
+            channels=self.n_channels_output,
+            dtype=dtype,
+            extra_settings=extra_settings,
+            samplerate=sampling_rate)
 
     @property
     def output_channels(self):

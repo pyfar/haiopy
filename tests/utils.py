@@ -1,5 +1,7 @@
 import pytest
 from unittest import mock
+import numpy as np
+from haiopy.generators import ArrayBuffer, InputArrayBuffer, OutputArrayBuffer
 
 
 def default_devices():
@@ -67,3 +69,35 @@ def check_input_settings(
         samplerate=None):
     """So far this only passes for all settings"""
     pass
+
+
+def array_buffer_stub(block_size=512, data=np.zeros((1, 512))):
+    """Generate a ArrayBuffer Stub with given block size and data
+
+    Parameters
+    ----------
+    block_size : int
+        Block size for the sound card callback
+    data : array_like, float32, int24, int16, int8
+        The data of the buffer
+    """
+    if np.mod(data.shape[-1], block_size) != 0:
+        raise ValueError(
+            'The data needs to be an integer multiple of the block size')
+
+    n_blocks = data.shape[-1] // block_size
+
+    def next_block():
+        strided = np.lib.stride_tricks.as_strided(
+            data, (*data.shape[:-1], n_blocks, block_size))
+
+        for idx in range(n_blocks):
+            yield strided[..., idx, :]
+
+    buffer = mock.MagicMock(spec_set=ArrayBuffer(block_size, data))
+    buffer.data = data
+    buffer.next = next_block
+    buffer.n_blocks = n_blocks
+    buffer.block_size = block_size
+
+    return buffer
