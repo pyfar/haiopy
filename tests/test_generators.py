@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from haiopy.generators import Buffer, ArrayBuffer
+from haiopy.generators import Buffer, ArrayBuffer, SignalBuffer
 import pytest
 import pyfar as pf
 
@@ -119,3 +119,52 @@ def test_buffer_updates():
         data, (*data.shape[:-1], new_n_blocks, new_block_size))
     npt.assert_array_equal(
         buffer._strided_data, strided_buffer_data)
+
+
+def test_signal_buffer():
+    sampling_rate = 44100
+    n_blocks = 10
+    block_size = 512
+    n_samples = block_size*n_blocks
+    sine = pf.signals.sine(
+        440, n_samples, amplitude=[1, 1], sampling_rate=sampling_rate)
+
+    with pytest.raises(ValueError, match='two-dimensional'):
+        SignalBuffer(
+            block_size,
+            pf.Signal(np.zeros((2, 3, block_size), 'float32'), sampling_rate))
+
+    with pytest.raises(ValueError, match='must be a pyfar.Signal'):
+        SignalBuffer(block_size, [1, 2, 3])
+
+    buffer = SignalBuffer(block_size, sine)
+
+    assert buffer._n_blocks == n_blocks
+    assert buffer.n_blocks == n_blocks
+
+    # check if the initial index s correct
+    assert buffer._index == 0
+    assert buffer.index == 0
+
+    # check if the data arrays are correct
+    npt.assert_array_equal(buffer._data.time, sine.time)
+    npt.assert_array_equal(buffer.data.time, sine.time)
+
+    # check if the data strides are correct
+    strided_buffer_data = np.lib.stride_tricks.as_strided(
+        sine.time, (*sine.cshape, n_blocks, block_size))
+    npt.assert_array_equal(
+        buffer._strided_data, strided_buffer_data)
+
+    # check first step
+    block_data = buffer.__next__()
+    npt.assert_array_equal(block_data, strided_buffer_data[..., 0, :])
+
+    # check second step
+    block_data = buffer.__next__()
+    npt.assert_array_equal(block_data, strided_buffer_data[..., 1, :])
+
+    # check if a error is raised if the end of the buffer is reached
+    with pytest.raises(StopIteration, match="buffer is empty"):
+        while True:
+            buffer.__next__()

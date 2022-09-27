@@ -1,4 +1,5 @@
 import numpy as np
+import pyfar as pf
 from abc import abstractproperty, abstractmethod
 
 
@@ -123,3 +124,68 @@ class InputArrayBuffer(ArrayBuffer):
 
     def __init__(self, block_size, data, sampling_rate) -> None:
         super().__init__(block_size, data, sampling_rate)
+
+
+class SignalBuffer(Buffer):
+
+    def __init__(self, block_size, signal) -> None:
+        super().__init__(block_size)
+        if not isinstance(signal, pf.Signal):
+            raise ValueError("signal must be a pyfar.Signal object.")
+        if signal.time.ndim > 2:
+            raise ValueError("Only two-dimensional arrays are allowed")
+        self._data = self._pad_data(signal)
+        self._update_data()
+        self._index = 0
+
+    def _pad_data(self, data):
+        n_samples = data.n_samples
+        if np.mod(n_samples, self._block_size) > 0:
+            pad_samples = self.block_size - np.mod(n_samples, self.block_size)
+            padded = pf.dsp.pad_zeros(data, pad_samples, mode='after')
+        else:
+            padded = data
+
+        return padded
+
+    @property
+    def n_channels(self):
+        return self.data.cshape[0]
+
+    @property
+    def sampling_rate(self):
+        return self.data.sampling_rate
+
+    @property
+    def n_blocks(self):
+        return self._n_blocks
+
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def data(self):
+        return self._data
+
+    def _set_block_size(self, block_size):
+        super()._set_block_size(block_size)
+        self._update_data()
+
+    def _update_data(self):
+        self._n_blocks = int(np.ceil(self.data.n_samples / self.block_size))
+        self._strided_data = np.lib.stride_tricks.as_strided(
+            self.data.time,
+            (*self.data.cshape, self.n_blocks, self.block_size))
+
+    # @data.setter
+    # def data(self, data):
+    #     self._data = self._pad_data(data)
+    #     self._update_data()
+
+    def next(self):
+        if self._index < self._n_blocks:
+            current = self._index
+            self._index += 1
+            return self._strided_data[..., current, :]
+        raise StopIteration("The buffer is empty.")
