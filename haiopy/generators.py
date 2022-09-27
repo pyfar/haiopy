@@ -1,4 +1,5 @@
 import numpy as np
+from abc import abstractproperty, abstractmethod
 
 
 class Buffer(object):
@@ -24,22 +25,31 @@ class Buffer(object):
     def block_size(self, block_size):
         self._set_block_size(block_size)
 
+    @abstractproperty
+    def sampling_rate(self):
+        pass
+
+    @abstractmethod
     def __iter__(self):
-        raise NotImplementedError()
+        pass
 
     def __next__(self):
         return self.next()
 
+    @abstractmethod
     def next(self):
         raise NotImplementedError()
 
 
 class ArrayBuffer(Buffer):
 
-    def __init__(self, block_size, data) -> None:
+    def __init__(self, block_size, data, sampling_rate) -> None:
         super().__init__(block_size)
-        self.data = data
+        if data.ndim > 2:
+            raise ValueError("Only two-dimensional arrays are allowed")
+        self.data = np.atleast_2d(data)
         self._index = 0
+        self._sampling_rate = sampling_rate
 
     def _pad_data(self, data):
         n_samples = data.shape[-1]
@@ -52,6 +62,14 @@ class ArrayBuffer(Buffer):
             padded = data
 
         return padded
+
+    @property
+    def n_channels(self):
+        return self.data.shape[0]
+
+    @property
+    def sampling_rate(self):
+        return self._sampling_rate
 
     @property
     def n_blocks(self):
@@ -77,7 +95,7 @@ class ArrayBuffer(Buffer):
 
     @data.setter
     def data(self, data):
-        self._data = self._pad_data(data)
+        self._data = self._pad_data(np.atleast_2d(data))
         self._update_data()
 
     def next(self):
@@ -90,25 +108,18 @@ class ArrayBuffer(Buffer):
 
 class OutputArrayBuffer(ArrayBuffer):
 
-    def __init__(self, block_size, data) -> None:
-        super().__init__(self, block_size, data)
+    def __init__(self, block_size, data, sampling_rate) -> None:
+        super().__init__(block_size, data, sampling_rate)
 
-    # def next(self):
-    #     if self._index < self._n_blocks:
-    #         current = self._index
-    #         self._index += 1
-    #         return self._buffer[..., current, :]
-    #     raise StopIteration("Buffer is empty")
+    def _update_data(self):
+        self._n_blocks = int(np.ceil(self.data.shape[-1] / self.block_size))
+        self._strided_data = np.lib.stride_tricks.as_strided(
+            self.data,
+            (*self.data.shape[:-1], self.n_blocks, self.block_size),
+            writeable=False)
 
 
 class InputArrayBuffer(ArrayBuffer):
 
-    def __init__(self, block_size, data) -> None:
-        super().__init__(self, block_size, data)
-
-    # def next(self):
-    #     if self._index < self._n_blocks:
-    #         current = self._index
-    #         self._index += 1
-    #         return self._buffer[..., current, :]
-    #     raise StopIteration("Buffer is empty")
+    def __init__(self, block_size, data, sampling_rate) -> None:
+        super().__init__(block_size, data, sampling_rate)

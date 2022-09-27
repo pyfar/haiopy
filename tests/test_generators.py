@@ -29,11 +29,11 @@ def test_buffer():
     # with pytest.raises(NotImplementedError):
     #     buffer.data
 
-    with pytest.raises(NotImplementedError):
-        buffer.__next__()
+    # with pytest.raises(NotImplementedError):
+    #     buffer.__next__()
 
-    with pytest.raises(NotImplementedError):
-        buffer.__iter__()
+    # with pytest.raises(NotImplementedError):
+    #     buffer.__iter__()
 
 
 def test_array_buffer():
@@ -45,10 +45,14 @@ def test_array_buffer():
 
     freq = 440
 
-    data_pf = pf.signals.sine(freq, n_samples, sampling_rate=sampling_rate)
+    data_pf = pf.signals.sine(
+        freq, n_samples, sampling_rate=sampling_rate)
     data = data_pf.time
 
-    buffer = ArrayBuffer(block_size, data)
+    with pytest.raises(ValueError, match='Only two-dimensional'):
+        ArrayBuffer(block_size, np.zeros((1, 1, block_size)), sampling_rate)
+
+    buffer = ArrayBuffer(block_size, data, sampling_rate)
 
     assert buffer._n_blocks == n_blocks
     assert buffer.n_blocks == n_blocks
@@ -94,7 +98,7 @@ def test_buffer_updates():
 
     data_empty = np.zeros_like(data)
 
-    buffer = ArrayBuffer(block_size, data_empty)
+    buffer = ArrayBuffer(block_size, data_empty, sampling_rate)
 
     buffer.data = data
     npt.assert_array_equal(buffer._data, data)
