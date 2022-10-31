@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from haiopy.generators import Buffer, ArrayBuffer, SignalBuffer
+from haiopy.generators import Buffer, SignalBuffer
 import pytest
 import pyfar as pf
 
@@ -52,55 +52,6 @@ def test_buffer_state():
         # check_if_active() raises an exception if buffer is active
         with pytest.raises(BufferError, match="needs to be inactive"):
             buffer.check_if_active()
-
-
-def test_array_buffer():
-
-    block_size = 512
-    n_blocks = 10
-    n_samples = block_size*n_blocks
-    sampling_rate = 44100
-
-    freq = 440
-
-    data_pf = pf.signals.sine(
-        freq, n_samples, sampling_rate=sampling_rate)
-    data = data_pf.time
-
-    with pytest.raises(ValueError, match='Only two-dimensional'):
-        ArrayBuffer(block_size, np.zeros((1, 1, block_size)), sampling_rate)
-
-    buffer = ArrayBuffer(block_size, data, sampling_rate)
-
-    assert buffer._n_blocks == n_blocks
-    assert buffer.n_blocks == n_blocks
-
-    # check if the initial index s correct
-    assert buffer._index == 0
-    assert buffer.index == 0
-
-    # check if the data arrays are correct
-    npt.assert_array_equal(buffer._data, data)
-    npt.assert_array_equal(buffer.data, data)
-
-    # check if the data strides are correct
-    strided_buffer_data = np.lib.stride_tricks.as_strided(
-        data, (*data.shape[:-1], n_blocks, block_size))
-    npt.assert_array_equal(
-        buffer._strided_data, strided_buffer_data)
-
-    # check first step
-    block_data = buffer.__next__()
-    npt.assert_array_equal(block_data, strided_buffer_data[..., 0, :])
-
-    # check second step
-    block_data = buffer.__next__()
-    npt.assert_array_equal(block_data, strided_buffer_data[..., 1, :])
-
-    # check if a error is raised if the end of the buffer is reached
-    with pytest.raises(StopIteration, match="buffer is empty"):
-        while True:
-            buffer.__next__()
 
 
 def test_signal_buffer():

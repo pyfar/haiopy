@@ -138,25 +138,6 @@ class ArrayBuffer(Buffer):
         raise StopIteration("The buffer is empty.")
 
 
-class OutputArrayBuffer(ArrayBuffer):
-
-    def __init__(self, block_size, data, sampling_rate) -> None:
-        super().__init__(block_size, data, sampling_rate)
-
-    def _update_data(self):
-        self._n_blocks = int(np.ceil(self.data.shape[-1] / self.block_size))
-        self._strided_data = np.lib.stride_tricks.as_strided(
-            self.data,
-            (*self.data.shape[:-1], self.n_blocks, self.block_size),
-            writeable=False)
-
-
-class InputArrayBuffer(ArrayBuffer):
-
-    def __init__(self, block_size, data, sampling_rate) -> None:
-        super().__init__(block_size, data, sampling_rate)
-
-
 class SignalBuffer(Buffer):
 
     def __init__(self, block_size, signal) -> None:
