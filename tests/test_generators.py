@@ -26,6 +26,10 @@ def test_buffer():
             ValueError, match='The block size needs to be an integer'):
         Buffer(float(10))
 
+
+def test_buffer_state():
+    block_size = 512
+
     # create new buffer
     buffer = Buffer(block_size)
     buffer._start()
@@ -36,6 +40,18 @@ def test_buffer():
         buffer._stop()
 
     assert buffer.is_active is False
+
+    # The buffer will be automatically set to be active after the first call
+    # to the __next__ method
+    # The pytest raises is required here, as the sub-class specific next
+    # method is an abstract class method
+    with pytest.raises(NotImplementedError):
+        next(buffer)
+        assert buffer._is_active is True
+
+        # check_if_active() raises an exception if buffer is active
+        with pytest.raises(BufferError, match="needs to be inactive"):
+            buffer.check_if_active()
 
 
 def test_array_buffer():
@@ -87,42 +103,6 @@ def test_array_buffer():
             buffer.__next__()
 
 
-def test_buffer_updates():
-    block_size = 512
-    n_blocks = 10
-    n_samples = block_size*n_blocks
-    sampling_rate = 44100
-
-    freq = 440
-
-    data_pf = pf.signals.sine(freq, n_samples, sampling_rate=sampling_rate)
-    data = data_pf.time
-
-    data_empty = np.zeros_like(data)
-
-    buffer = ArrayBuffer(block_size, data_empty, sampling_rate)
-
-    buffer.data = data
-    npt.assert_array_equal(buffer._data, data)
-    npt.assert_array_equal(buffer.data, data)
-
-    # The new block size is 4 times smaller than the old one
-    new_block_size = 128
-    buffer.block_size = new_block_size
-
-    # The data itself is not touched in this case
-    npt.assert_array_equal(buffer._data, data)
-    npt.assert_array_equal(buffer.data, data)
-
-    # Stride the array with the new block size
-    # The new number of blocks is an integer multiple of the old block size
-    new_n_blocks = n_samples // new_block_size
-    strided_buffer_data = np.lib.stride_tricks.as_strided(
-        data, (*data.shape[:-1], new_n_blocks, new_block_size))
-    npt.assert_array_equal(
-        buffer._strided_data, strided_buffer_data)
-
-
 def test_signal_buffer():
     sampling_rate = 44100
     n_blocks = 10
@@ -170,3 +150,53 @@ def test_signal_buffer():
     with pytest.raises(StopIteration, match="buffer is empty"):
         while True:
             buffer.__next__()
+
+
+def test_signal_buffer_updates():
+    sampling_rate = 44100
+    n_blocks = 10
+    block_size = 512
+    n_samples = block_size*n_blocks
+    noise = pf.signals.noise(
+        n_samples, rms=[1, 1], sampling_rate=sampling_rate)
+    sine = pf.signals.sine(
+        440, n_samples, amplitude=[1, 1], sampling_rate=sampling_rate)
+
+    # Create a new buffer
+    buffer = SignalBuffer(block_size, noise)
+
+    # Set a new signal as data for the buffer
+    buffer.data = sine
+    npt.assert_array_equal(buffer._data.time, sine.time)
+    npt.assert_array_equal(buffer.data.time, sine.time)
+
+    # The new block size is 4 times smaller than the old one
+    new_block_size = 128
+    buffer.block_size = new_block_size
+
+    # The data itself is not touched in this case
+    npt.assert_array_equal(buffer._data.time, sine.time)
+    npt.assert_array_equal(buffer.data.time, sine.time)
+
+    # Stride the array with the new block size
+    # The new number of blocks is an integer multiple of the old block size
+    new_n_blocks = n_samples // new_block_size
+    strided_buffer_data = np.lib.stride_tricks.as_strided(
+        sine.time, (*sine.time.shape[:-1], new_n_blocks, new_block_size))
+    npt.assert_array_equal(
+        buffer._strided_data, strided_buffer_data)
+
+    # Check if Errors are raised when buffer is in use
+    next(buffer)
+    assert buffer._is_active is True
+
+    # Setting the block size is not allowed if the buffer is active
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        buffer.block_size = 512
+
+    # Setting and getting the data is not allowed if the buffer is active
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        buffer.data = sine
+
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        buffer.data

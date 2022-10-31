@@ -36,6 +36,7 @@ class Buffer(object):
         pass
 
     def __next__(self):
+        self._start()
         return self.next()
 
     @abstractmethod
@@ -66,8 +67,6 @@ class Buffer(object):
         raise StopIteration(msg)
 
     def _start(self):
-        if self._is_active:
-            raise BufferError("Buffer is already active.")
         self._is_active = True
 
     def _reset(self):
@@ -196,7 +195,14 @@ class SignalBuffer(Buffer):
 
     @property
     def data(self):
+        self.check_if_active()
         return self._data
+
+    @data.setter
+    def data(self, data):
+        self.check_if_active()
+        self._data = self._pad_data(data)
+        self._update_data()
 
     def _set_block_size(self, block_size):
         self.check_if_active()
@@ -209,11 +215,6 @@ class SignalBuffer(Buffer):
         self._strided_data = np.lib.stride_tricks.as_strided(
             self.data.time,
             (*self.data.cshape, self.n_blocks, self.block_size))
-
-    # @data.setter
-    # def data(self, data):
-    #     self._data = self._pad_data(data)
-    #     self._update_data()
 
     def next(self):
         if self._index < self._n_blocks:
