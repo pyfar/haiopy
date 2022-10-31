@@ -26,14 +26,16 @@ def test_buffer():
             ValueError, match='The block size needs to be an integer'):
         Buffer(float(10))
 
-    # with pytest.raises(NotImplementedError):
-    #     buffer.data
+    # create new buffer
+    buffer = Buffer(block_size)
+    buffer._start()
+    assert buffer.is_active is True
 
-    # with pytest.raises(NotImplementedError):
-    #     buffer.__next__()
+    # check if the correct error is raised on stopping
+    with pytest.raises(StopIteration, match="iteration stopped"):
+        buffer._stop()
 
-    # with pytest.raises(NotImplementedError):
-    #     buffer.__iter__()
+    assert buffer.is_active is False
 
 
 def test_array_buffer():
