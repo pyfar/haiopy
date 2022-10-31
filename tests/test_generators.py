@@ -124,6 +124,12 @@ def test_signal_buffer():
     assert buffer._n_blocks == n_blocks
     assert buffer.n_blocks == n_blocks
 
+    # test sampling rate getter
+    assert buffer.sampling_rate == sampling_rate
+
+    # test number of channels
+    assert buffer.n_channels == 2
+
     # check if the initial index s correct
     assert buffer._index == 0
     assert buffer.index == 0
