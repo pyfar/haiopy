@@ -4,31 +4,47 @@ from abc import abstractproperty, abstractmethod
 
 
 class Buffer(object):
+    """Abstract base class for audio buffers for block-wise iteration.
+
+    The base class primarily implements buffer state related functionality.
+    """
 
     def __init__(self, block_size) -> None:
+        """Create a Buffer object with a given block size.
+
+        Parameters
+        ----------
+        block_size : _type_
+            _description_
+        """
         self._check_block_size(block_size)
         self._block_size = block_size
         self._buffer = None
         self._is_active = False
 
     def _check_block_size(self, block_size):
+        """Check if the block size is an integer."""
         if type(block_size) != int:
             raise ValueError("The block size needs to be an integer")
 
     def _set_block_size(self, block_size):
+        """Private block size setter implementing validity checks."""
         self._check_block_size(block_size)
         self._block_size = block_size
 
     @property
     def block_size(self):
+        """Returns the block size of the buffer in samples"""
         return self._block_size
 
     @block_size.setter
     def block_size(self, block_size):
+        """Set the block size in samples. Only integer values are supported"""
         self._set_block_size(block_size)
 
     @abstractproperty
     def sampling_rate(self):
+        """Return sampling rate."""
         pass
 
     @abstractmethod
@@ -36,15 +52,19 @@ class Buffer(object):
         pass
 
     def __next__(self):
+        """Next dunder method for iteration"""
         self._start()
         return self.next()
 
     @abstractmethod
     def next(self):
+        """Next method which for sub-class specific handling of data."""
         raise NotImplementedError()
 
     @property
     def is_active(self):
+        """Return the state of the buffer.
+        `True` if the buffer is active, `False` if inactive."""
         return self._is_active
 
     def check_if_active(self):
@@ -63,13 +83,19 @@ class Buffer(object):
                 "The buffer needs to be inactive to be modified.")
 
     def _stop(self, msg="Buffer iteration stopped."):
+        """Stop buffer iteration and set the state to inactive."""
         self._is_active = False
         raise StopIteration(msg)
 
     def _start(self):
+        """Set the state to active.
+        Additional operations required before iterating the sub-class can be
+        implemented in the respective sub-class."""
         self._is_active = True
 
     def _reset(self):
+        """Stop and reset the buffer.
+        Resetting the buffer is implemented in the respective sub-class"""
         self._stop()
 
 
