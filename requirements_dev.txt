@@ -12,3 +12,5 @@ pytest-runner
 numpy
 sounddevice
 pyfar
+autodocsumm
+insipid-sphinx-theme
