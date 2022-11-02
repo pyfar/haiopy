@@ -4,7 +4,7 @@ import sys
 import sounddevice as sd
 from abc import (ABCMeta, abstractmethod, abstractproperty)
 
-from haiopy.generators import (
+from haiopy.buffers import (
     ArrayBuffer, InputArrayBuffer, OutputArrayBuffer)
 
 
@@ -14,59 +14,37 @@ def list_devices():
 
 class _Device(object):
     def __init__(
-            self):
+            self,
+            id,
+            sampling_rate,
+            block_size,
+            dtype):
         super().__init__()
 
-    @abstractproperty
-    def id(sellf):
-        pass
-
-    @abstractproperty
+    @property
     def name(self):
+        raise NotImplementedError('Abstract method')
+
+    @abstractproperty
+    def sampling_rate(self):
         pass
 
-    @abstractmethod
-    def playback():
+    @abstractproperty
+    def block_size(self):
         pass
 
-    @abstractmethod
-    def record():
-        pass
-
-    @abstractmethod
-    def playback_record():
-        pass
-
-    @abstractmethod
-    def initialize_playback():
-        pass
-
-    @abstractmethod
-    def initialize_record():
-        pass
-
-    @abstractmethod
-    def initialize_playback_record():
-        pass
-
-    @abstractmethod
-    def abort():
+    @abstractproperty
+    def dtype(self):
         pass
 
 
 class AudioDevice(_Device):
     def __init__(
             self,
-            id=sd.default.device,
+            id=0,
             sampling_rate=44100,
             block_size=512,
             dtype='float32',
-            latency=None,
-            extra_settings=None,
-            clip_off=None,
-            dither_off=None,
-            never_drop_input=None,
-            prime_output_buffers_using_stream_callback=None
             ):
         super().__init__()
 
@@ -74,10 +52,10 @@ class AudioDevice(_Device):
         self._name = sd.query_devices(id)['name']
 
         self._id = id
-        self.dtype = dtype
+        self._dtype = dtype
         self._block_size = block_size
         self._sampling_rate = sampling_rate
-        self._extra_settings = extra_settings
+        # self._extra_settings = extra_settings
 
         self._callback = None
         self._stream = None
@@ -86,36 +64,13 @@ class AudioDevice(_Device):
 
         self._stream_finished = Event()
 
-    # def check_settings(
-    #         self, sampling_rate, dtype, extra_settings,):
-    #     """Check if settings are compatible with the physical devices.
-
-    #     Parameters
-    #     ----------
-    #     sampling_rate : int
-    #         The audio sampling rate
-    #     dtype : np.float32, np.int8, np.int16, np.int32
-    #         The audio buffer data type
-    #     extra_settings : extra settings
-    #         Audio API specific settings.
-    #     """
-    #     sd.check_input_settings(
-    #         device=self.id,
-    #         channels=self.n_channels_input,
-    #         dtype=dtype,
-    #         extra_settings=extra_settings,
-    #         samplerate=sampling_rate)
-
-    #     sd.check_output_settings(
-    #         device=self.id,
-    #         channels=self.n_channels_output,
-    #         dtype=dtype,
-    #         extra_settings=extra_settings,
-    #         samplerate=sampling_rate)
-
     @property
     def id(self):
         return self._id
+
+    @abstractmethod
+    def check_settings(**kwargs):
+        pass
 
     @property
     def name(self):
@@ -145,6 +100,10 @@ class AudioDevice(_Device):
         self.output_buffer.block_size = block_size
 
     @property
+    def dtype(self):
+        return self._dtype
+
+    @abstractproperty
     def stream(self):
         """The sounddevice audio stream.
         """
@@ -153,25 +112,24 @@ class AudioDevice(_Device):
     def finished_callback(self) -> None:
         """Custom callback after a audio stream has finished."""
         print("I'm finished.")
-        pass
 
     def _finished_callback(self) -> None:
-        """Portaudio callback after a audio stream has finished.
-        """
+        """Private portaudio callback after a audio stream has finished."""
         self._stream_finished.set()
         self.finished_callback()
         self.stream.stop()
 
     def start(self):
         """Start the audio stream"""
-        if not self.stream.closed:
-            if not self.stream.active:
-                self._stream_finished.clear()
-                self.stream.start()
-            else:
-                print("Stream is already active.", file=sys.stderr)
-        else:
+        if self.stream.closed:
             print("Stream is closed. Try re-initializing.", file=sys.stderr)
+            return
+
+        elif not self.stream.active:
+            self._stream_finished.clear()
+            self.stream.start()
+        else:
+            print("Stream is already active.", file=sys.stderr)
 
     def wait(self):
         """Wait for the audio stream to finish."""
@@ -212,8 +170,7 @@ class AudioInputDevice(AudioDevice):
             id=id,
             sampling_rate=sampling_rate,
             block_size=block_size,
-            dtype=dtype,
-            latency=latency)
+            dtype=dtype)
 
         n_channels_input = sd.query_devices(id)['max_input_channels']
         sd.check_input_settings(
@@ -298,39 +255,40 @@ class AudioOutputDevice(AudioDevice):
             dither_off=None,
             never_drop_input=None,
             prime_output_buffers_using_stream_callback=None):
-        super().__init__(
-            id=id,
-            sampling_rate=sampling_rate,
-            block_size=block_size,
-            dtype=dtype,
-            latency=latency)
 
-        # n_channels_output = sd.query_devices(id)['max_output_channels']
+        # First check the settings before continuing
         max_channel = np.max(channels)
         n_channels = len(channels)
         sd.check_output_settings(
             device=id,
-            channels=np.max([n_channels, max_channel]),
+            channels=np.max([n_channels, max_channel+1]),
             dtype=dtype,
             extra_settings=extra_settings,
             samplerate=sampling_rate)
 
+        super().__init__(
+            id=id,
+            sampling_rate=sampling_rate,
+            block_size=block_size,
+            dtype=dtype)
+
         self._output_channels = channels
 
         if output_buffer is None:
-            OutputArrayBuffer(
+            output_buffer = OutputArrayBuffer(
                 self.block_size,
                 np.zeros(
                     (self.n_channels_output, self.block_size),
                     dtype=self.dtype))
-        if output_buffer.data.shape[0] != self.n_channels_output:
-            raise ValueError(
-                "The shape of the buffer does not match the channel mapping")
+        # if output_buffer.data.shape[0] != self.n_channels_output:
+        #     raise ValueError(
+                # "The shape of the buffer does not match the channel mapping")
         self.output_buffer = output_buffer
         self.initialize()
 
     def check_settings(
-            self, sampling_rate=None, dtype=None, extra_settings=None):
+            self, sampling_rate=None, n_channels=None, dtype=None,
+            extra_settings=None):
         """Check if settings are compatible with the physical devices.
 
         Parameters
@@ -341,10 +299,16 @@ class AudioOutputDevice(AudioDevice):
             The audio buffer data type
         extra_settings : extra settings
             Audio API specific settings.
+
+        Raises
+        ------
+        PortAudioError
+            If the settings are incompatible with the device an exception is
+            raised.
         """
         sd.check_output_settings(
             device=self.id,
-            channels=self.n_channels_output,
+            channels=n_channels,
             dtype=dtype,
             extra_settings=extra_settings,
             samplerate=sampling_rate)
@@ -355,7 +319,22 @@ class AudioOutputDevice(AudioDevice):
 
     @property
     def n_channels_output(self):
+        """The total number of output channels.
+
+        Returns
+        -------
+        int
+            The number of output channels
+        """
         return len(self._output_channels)
+
+    @property
+    def _n_channels_stream(self):
+        """The number of output channels required for the stream.
+        This includes a number of unused pre-pended channels which need to be
+        filled with zeros before writing the portaudio buffer.
+        """
+        return np.max(self._output_channels) + 1
 
     @property
     def max_channels_output(self):
@@ -390,7 +369,13 @@ class AudioOutputDevice(AudioDevice):
         assert not status
 
         try:
-            outdata[:] = next(self._output_buffer).T
+            full_outdata = np.zeros(
+                (self._n_channels_stream, self.block_size),
+                dtype=self.dtype)
+
+            full_outdata[self.output_channels] = next(self._output_buffer)
+            outdata[:] = full_outdata.T
+            # outdata[:] = next(self._output_buffer).T
         except StopIteration:
             raise sd.CallbackStop("Buffer empty")
 
@@ -400,7 +385,7 @@ class AudioOutputDevice(AudioDevice):
             self.sampling_rate,
             self.block_size,
             self.id,
-            self.n_channels_output,
+            self._n_channels_stream,
             self.dtype,
             callback=self.output_callback,
             finished_callback=self._finished_callback)
@@ -416,5 +401,10 @@ class AudioOutputDevice(AudioDevice):
             raise ValueError(
                 "The buffer's block size does not match. ",
                 f"Needs to be {self.block_size}")
+
+        if buffer.n_channels != self.n_channels_output:
+            raise ValueError(
+                "The buffer's channel number does not match the channel "
+                f"mapping. Currently used channels are {self.output_channels}")
 
         self._output_buffer = buffer
