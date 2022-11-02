@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from haiopy.generators import Buffer, SignalBuffer
+from haiopy.buffers import Buffer, SignalBuffer
 import pytest
 import pyfar as pf
 
