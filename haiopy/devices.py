@@ -15,46 +15,52 @@ def list_devices():
 class _Device(object):
     def __init__(
             self,
-            id,
+            name,
             sampling_rate,
             block_size,
             dtype):
         super().__init__()
+        self._name = name
+        self._sampling_rate = sampling_rate
+        self._block_size = block_size
+        self._dtype = dtype
 
     @property
     def name(self):
-        raise NotImplementedError('Abstract method')
+        return self._name
 
-    @abstractproperty
+    @property
+    def id(self):
+        return self._id
+
     def sampling_rate(self):
-        pass
+        return self._sampling_rate
 
-    @abstractproperty
     def block_size(self):
-        pass
+        return self._block_size
 
-    @abstractproperty
     def dtype(self):
-        pass
+        return self.dtype
 
 
 class AudioDevice(_Device):
     def __init__(
             self,
-            id=0,
+            identifier=0,
             sampling_rate=44100,
             block_size=512,
             dtype='float32',
             ):
-        super().__init__()
 
-        id = sd.query_devices(id)['name']
-        self._name = sd.query_devices(id)['name']
+        identifier = sd.query_devices(identifier)['name']
 
-        self._id = id
-        self._dtype = dtype
-        self._block_size = block_size
-        self._sampling_rate = sampling_rate
+        super().__init__(
+            name=sd.query_devices(identifier)['name'],
+            sampling_rate=sampling_rate,
+            block_size=block_size,
+            dtype=dtype
+        )
+        self._id = identifier
         # self._extra_settings = extra_settings
 
         self._callback = None
@@ -154,7 +160,7 @@ class AudioDevice(_Device):
 class InputAudioDevice(AudioDevice):
     def __init__(
             self,
-            id=sd.default.device['input'],
+            identifier=sd.default.device['input'],
             sampling_rate=44100,
             block_size=512,
             dtype='float32',
@@ -167,14 +173,14 @@ class InputAudioDevice(AudioDevice):
             prime_output_buffers_using_stream_callback=None
             ):
         super().__init__(
-            id=id,
+            identifier=identifier,
             sampling_rate=sampling_rate,
             block_size=block_size,
             dtype=dtype)
 
-        n_channels_input = sd.query_devices(id)['max_input_channels']
+        n_channels_input = sd.query_devices(identifier)['max_input_channels']
         sd.check_input_settings(
-            device=id,
+            device=identifier,
             channels=n_channels_input,
             dtype=dtype,
             extra_settings=extra_settings,
@@ -243,7 +249,7 @@ class OutputAudioDevice(AudioDevice):
 
     def __init__(
             self,
-            id=sd.default.device['output'],
+            identifier=sd.default.device['output'],
             sampling_rate=44100,
             block_size=512,
             channels=[1],
@@ -260,14 +266,14 @@ class OutputAudioDevice(AudioDevice):
         max_channel = np.max(channels)
         n_channels = len(channels)
         sd.check_output_settings(
-            device=id,
+            device=identifier,
             channels=np.max([n_channels, max_channel+1]),
             dtype=dtype,
             extra_settings=extra_settings,
             samplerate=sampling_rate)
 
         super().__init__(
-            id=id,
+            identifier=identifier,
             sampling_rate=sampling_rate,
             block_size=block_size,
             dtype=dtype)
