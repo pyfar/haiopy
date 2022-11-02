@@ -223,8 +223,8 @@ class InputAudioDevice(AudioDevice):
 
         try:
             next(self._input_buffer)[:] = indata.T
-        except StopIteration:
-            raise sd.CallbackStop("Buffer empty")
+        except StopIteration as e:
+            raise sd.CallbackStop("Buffer empty") from e
 
     def initialize_record(self, n_channels):
         """Initialize the playback stream for a given number of channels.
@@ -383,8 +383,8 @@ class OutputAudioDevice(AudioDevice):
             full_outdata[self.output_channels] = next(self._output_buffer)
             outdata[:] = full_outdata.T
             # outdata[:] = next(self._output_buffer).T
-        except StopIteration:
-            raise sd.CallbackStop("Buffer empty")
+        except StopIteration as e:
+            raise sd.CallbackStop("Buffer empty") from e
 
     def initialize(self):
         """Initialize the playback stream for a given number of channels."""
