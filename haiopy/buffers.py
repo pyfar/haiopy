@@ -101,6 +101,18 @@ class Buffer(object):
 class SignalBuffer(Buffer):
     """Buffer to block wise iterate a `pyfar.Signal`
 
+    Examples
+    --------
+
+    >>> import pyfar as pf
+    >>> from haiopy.buffers import SignalBuffer
+    >>> block_size = 512
+    >>> sine = pf.signals.sine(440, 4*block_size)
+    >>> buffer = SignalBuffer(blockk_size, sine)
+    >>> for block in buffer:
+    >>>     print(block)
+
+
     """
 
     def __init__(self, block_size, signal) -> None:
