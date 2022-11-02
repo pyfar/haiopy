@@ -17,7 +17,7 @@ setup_requirements = ['pytest-runner']
 
 test_requirements = ['pytest>=3']
 
-python_requirements = '>=3.7, <=3.8'
+python_requirements = '>=3.8'
 
 setup(
     author="The pyfar developers",
@@ -29,8 +29,9 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
     description="Python package for handling playingback and recording.",
     install_requires=requirements,
