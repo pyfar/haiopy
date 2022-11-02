@@ -4,8 +4,8 @@ import sys
 import sounddevice as sd
 from abc import (ABCMeta, abstractmethod, abstractproperty)
 
-from haiopy.buffers import (
-    ArrayBuffer, InputArrayBuffer, OutputArrayBuffer)
+from haiopy.buffers import SignalBuffer
+import pyfar as pf
 
 
 def list_devices():
@@ -151,7 +151,7 @@ class AudioDevice(_Device):
             self.stream.stop()
 
 
-class AudioInputDevice(AudioDevice):
+class InputAudioDevice(AudioDevice):
     def __init__(
             self,
             id=sd.default.device['input'],
@@ -239,7 +239,7 @@ class AudioInputDevice(AudioDevice):
         self._stream = ostream
 
 
-class AudioOutputDevice(AudioDevice):
+class OutputAudioDevice(AudioDevice):
 
     def __init__(
             self,
@@ -275,11 +275,12 @@ class AudioOutputDevice(AudioDevice):
         self._output_channels = channels
 
         if output_buffer is None:
-            output_buffer = OutputArrayBuffer(
+            output_buffer = SignalBuffer(
                 self.block_size,
-                np.zeros(
-                    (self.n_channels_output, self.block_size),
-                    dtype=self.dtype))
+                pf.Signal(np.zeros(
+                        (self.n_channels_output, self.block_size),
+                        dtype=self.dtype),
+                    self.sampling_rate, fft_norm='rms'))
         # if output_buffer.data.shape[0] != self.n_channels_output:
         #     raise ValueError(
                 # "The shape of the buffer does not match the channel mapping")

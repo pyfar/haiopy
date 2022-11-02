@@ -1,7 +1,7 @@
 import pytest
 from unittest import mock
 import numpy as np
-from haiopy.generators import ArrayBuffer, InputArrayBuffer, OutputArrayBuffer
+from haiopy.buffers import SignalBuffer
 
 
 def default_devices():
@@ -94,10 +94,13 @@ def array_buffer_stub(block_size=512, data=np.zeros((1, 512))):
         for idx in range(n_blocks):
             yield strided[..., idx, :]
 
-    buffer = mock.MagicMock(spec_set=ArrayBuffer(block_size, data))
-    buffer.data = data
-    buffer.next = next_block
-    buffer.n_blocks = n_blocks
-    buffer.block_size = block_size
+    # buffer = mock.MagicMock(spec_set=ArrayBuffer(block_size, data))
+    buffer = SignalBuffer(block_size, data)
+
+    # buffer.data = data
+    # buffer._strided_data = np.atleast_3d(data)
+    # buffer.next = np.atleast_3d(next_block)
+    # buffer.n_blocks = n_blocks
+    # buffer.block_size = block_size
 
     return buffer
