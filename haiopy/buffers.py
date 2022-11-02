@@ -100,8 +100,24 @@ class Buffer(object):
 
 
 class SignalBuffer(Buffer):
+    """Buffer to block wise iterate a `pyfar.Signal`
+
+    """
 
     def __init__(self, block_size, signal) -> None:
+        """Initialize a `SignalBuffer` with a given block size from a
+        `pyfar.Signal`.
+        If the number of audio samples is not an integer multiple of the
+        block size, the last block will be filled with zeros.
+
+        Parameters
+        ----------
+        block_size : int
+            The block size in samples
+        signal : pyfar.Signal
+            The audio data to be block wise iterated.
+
+        """
         super().__init__(block_size)
         if not isinstance(signal, pf.Signal):
             raise ValueError("signal must be a pyfar.Signal object.")
@@ -112,6 +128,18 @@ class SignalBuffer(Buffer):
         self._index = 0
 
     def _pad_data(self, data):
+        """Pad the signal with zeros to avoid partially filled blocks
+
+        Parameters
+        ----------
+        data : pyfar.Signal
+            The input audio signal.
+
+        Returns
+        -------
+        pyfar.Signal
+            Zero-padded signal.
+        """
         n_samples = data.n_samples
         if np.mod(n_samples, self._block_size) > 0:
             pad_samples = self.block_size - np.mod(n_samples, self.block_size)
@@ -121,27 +149,33 @@ class SignalBuffer(Buffer):
 
     @property
     def n_channels(self):
+        """The number of audio channels as integer."""
         return self.data.cshape[0]
 
     @property
     def sampling_rate(self):
+        """The sampling rate of the underlying data."""
         return self.data.sampling_rate
 
     @property
     def n_blocks(self):
+        """The number of blocks contained in the buffer."""
         return self._n_blocks
 
     @property
     def index(self):
+        """The current block index as integer."""
         return self._index
 
     @property
     def data(self):
+        """Return the underlying signal if the buffer is not active."""
         self.check_if_active()
         return self._data
 
     @data.setter
     def data(self, data):
+        """Set the underlying signal if the buffer is not active."""
         self.check_if_active()
         self._data = self._pad_data(data)
         self._update_data()
@@ -152,6 +186,10 @@ class SignalBuffer(Buffer):
         self._update_data()
 
     def _update_data(self):
+        """Update the data block strided of the underlying data.
+        The function creates a block-wise view of the numpy data array storing
+        the time domain data.
+        """
         self.check_if_active()
         self._n_blocks = int(np.ceil(self.data.n_samples / self.block_size))
         self._strided_data = np.lib.stride_tricks.as_strided(
@@ -159,6 +197,9 @@ class SignalBuffer(Buffer):
             (*self.data.cshape, self.n_blocks, self.block_size))
 
     def next(self):
+        """Return the next audio block as numpy array and increment the block
+        index.
+        """
         if self._index < self._n_blocks:
             current = self._index
             self._index += 1
