@@ -47,9 +47,8 @@ class Buffer(object):
         """Return sampling rate."""
         pass
 
-    @abstractmethod
     def __iter__(self):
-        pass
+        return self
 
     def __next__(self):
         """Next dunder method for iteration"""

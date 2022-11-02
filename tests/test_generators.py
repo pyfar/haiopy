@@ -53,6 +53,9 @@ def test_buffer_state():
         with pytest.raises(BufferError, match="needs to be inactive"):
             buffer.check_if_active()
 
+    # check iterator dunder
+    assert iter(buffer) == buffer
+
 
 def test_signal_buffer():
     sampling_rate = 44100
@@ -107,6 +110,16 @@ def test_signal_buffer():
     with pytest.raises(StopIteration, match="buffer is empty"):
         while True:
             buffer.__next__()
+
+    # test the looping blocks
+    buffer = SignalBuffer(block_size, sine)
+    for idx, block in enumerate(buffer):
+        assert buffer.is_active is True
+        npt.assert_array_equal(
+            block, strided_buffer_data[..., idx, :])
+
+    # check if state is set to inactive after loop finished
+    assert buffer.is_active is False
 
 
 def test_signal_buffer_updates():
