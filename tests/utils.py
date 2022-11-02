@@ -1,6 +1,7 @@
 import pytest
 from unittest import mock
 import numpy as np
+import pyfar as pf
 from haiopy.buffers import SignalBuffer
 
 
@@ -87,6 +88,8 @@ def array_buffer_stub(block_size=512, data=np.zeros((1, 512))):
 
     n_blocks = data.shape[-1] // block_size
 
+    sig = pf.Signal(data, 44100, fft_norm='rms')
+
     def next_block():
         strided = np.lib.stride_tricks.as_strided(
             data, (*data.shape[:-1], n_blocks, block_size))
@@ -95,7 +98,7 @@ def array_buffer_stub(block_size=512, data=np.zeros((1, 512))):
             yield strided[..., idx, :]
 
     # buffer = mock.MagicMock(spec_set=ArrayBuffer(block_size, data))
-    buffer = SignalBuffer(block_size, data)
+    buffer = SignalBuffer(block_size, sig)
 
     # buffer.data = data
     # buffer._strided_data = np.atleast_3d(data)
