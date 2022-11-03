@@ -72,7 +72,7 @@ def check_input_settings(
     pass
 
 
-def array_buffer_stub(block_size=512, data=np.zeros((1, 512))):
+def signal_buffer_stub(block_size=512, data=np.zeros((1, 512))):
     """Generate a ArrayBuffer Stub with given block size and data
 
     Parameters
