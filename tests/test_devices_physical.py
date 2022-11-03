@@ -25,32 +25,32 @@ def default_device_multiface_fireface():
 
 
 def test_default_device_helper():
-    id = default_device_multiface_fireface()
-    fireface = 'Fireface' in sd.query_devices(id)['name']
-    multiface = 'Multiface' in sd.query_devices(id)['name']
+    identifier = default_device_multiface_fireface()
+    fireface = 'Fireface' in sd.query_devices(identifier)['name']
+    multiface = 'Multiface' in sd.query_devices(identifier)['name']
     assert fireface or multiface
 
 
 def test_check_input_settings():
-    id = default_device_multiface_fireface()
+    identifier = default_device_multiface_fireface()
 
-    in_device = devices.InputAudioDevice(id)
+    in_device = devices.InputAudioDevice(identifier)
     in_device.check_settings()
 
 
 def test_check_output_settings(empty_buffer_stub):
-    id = default_device_multiface_fireface()
+    identifier = default_device_multiface_fireface()
 
     channels = [1]
     block_size = 512
 
     out_device = devices.OutputAudioDevice(
-        id, 44100, block_size, channels=channels, dtype='float32',
+        identifier, 44100, block_size, channels=channels, dtype='float32',
         output_buffer=empty_buffer_stub)
 
     out_device.check_settings(sampling_rate=23e3)
 
-    sd.check_output_settings(id, samplerate=23e3)
+    sd.check_output_settings(identifier, samplerate=23e3)
 
 
 def test_sine_playback(sine_buffer_stub):
