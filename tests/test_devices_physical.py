@@ -2,7 +2,7 @@ from haiopy import devices
 import sounddevice as sd
 from . import utils
 from unittest.mock import patch, MagicMock
-import asyncio
+import time
 
 
 def default_device_multiface_fireface():
@@ -52,22 +52,17 @@ def test_check_output_settings(empty_buffer_stub):
 
     sd.check_output_settings(id, samplerate=23e3)
 
-    pass
-
 
 def test_sine_playback(sine_buffer_stub):
 
-    sine_buffer_stub
+    buffer = sine_buffer_stub[0]
+    duration = sine_buffer_stub[1]
 
     out_device = devices.OutputAudioDevice(
         identifier=default_device_multiface_fireface(),
-        output_buffer=sine_buffer_stub,
+        output_buffer=buffer,
         channels=[3])
     out_device.check_settings()
 
     out_device.start()
-
-    asyncio.sleep(1)
-
-
-    # out_device.close()
+    time.sleep(duration)
