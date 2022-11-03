@@ -187,11 +187,17 @@ class InputAudioDevice(AudioDevice):
             samplerate=sampling_rate)
 
     def check_settings(
-            self, sampling_rate=None, dtype=None, extra_settings=None,):
+            self,
+            n_channels=None,
+            sampling_rate=None,
+            dtype=None,
+            extra_settings=None):
         """Check if settings are compatible with the physical devices.
 
         Parameters
         ----------
+        n_channels : int
+            The number of channels to be used
         sampling_rate : int
             The audio sampling rate
         dtype : np.float32, np.int8, np.int16, np.int32
@@ -201,7 +207,7 @@ class InputAudioDevice(AudioDevice):
         """
         sd.check_input_settings(
             device=self.id,
-            channels=self.n_channels_input,
+            channels=n_channels,
             dtype=dtype,
             extra_settings=extra_settings,
             samplerate=sampling_rate)
@@ -294,12 +300,17 @@ class OutputAudioDevice(AudioDevice):
         self.initialize()
 
     def check_settings(
-            self, sampling_rate=None, n_channels=None, dtype=None,
+            self,
+            n_channels=None,
+            sampling_rate=None,
+            dtype=None,
             extra_settings=None):
         """Check if settings are compatible with the physical devices.
 
         Parameters
         ----------
+        n_channels : int
+            The number of channels to be used
         sampling_rate : int
             The audio sampling rate
         dtype : np.float32, np.int8, np.int16, np.int32
