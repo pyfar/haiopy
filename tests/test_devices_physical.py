@@ -62,13 +62,14 @@ def test_check_input_settings():
 
 def test_check_output_settings(empty_buffer_stub):
     identifier, config = default_device_multiface_fireface()
-
     channels = [3]
     block_size = 512
 
+    buffer = empty_buffer_stub[0]
+
     out_device = devices.OutputAudioDevice(
         identifier, 44100, block_size, channels=channels, dtype='float32',
-        output_buffer=empty_buffer_stub)
+        output_buffer=buffer)
 
     # Check sampling rate
     out_device.check_settings(sampling_rate=config['default_samplerate'])
@@ -90,12 +91,35 @@ def test_sine_playback(sine_buffer_stub):
 
     buffer = sine_buffer_stub[0]
     duration = sine_buffer_stub[1]
+    identifier, config = default_device_multiface_fireface()
+
+    sampling_rate = config['default_samplerate']
 
     out_device = devices.OutputAudioDevice(
-        identifier=default_device_multiface_fireface(),
+        identifier=identifier,
         output_buffer=buffer,
-        channels=[3])
+        channels=[0],
+        sampling_rate=sampling_rate)
     out_device.check_settings()
 
     out_device.start()
     time.sleep(duration)
+
+
+def test_recoring(empty_buffer_stub):
+
+    buffer = empty_buffer_stub[0]
+    duration = empty_buffer_stub[1]
+
+    identifier, config = default_device_multiface_fireface()
+
+    in_device = devices.InputAudioDevice(
+        identifier=identifier,
+        input_buffer=buffer,
+        channels=[1])
+    in_device.check_settings()
+
+    in_device.start()
+    time.sleep(duration)
+
+    in_device.stop()

@@ -163,6 +163,7 @@ class InputAudioDevice(AudioDevice):
             identifier=sd.default.device['input'],
             sampling_rate=44100,
             block_size=512,
+            channels=[1],
             dtype='float32',
             input_buffer=None,
             latency=None,
@@ -172,19 +173,35 @@ class InputAudioDevice(AudioDevice):
             never_drop_input=None,
             prime_output_buffers_using_stream_callback=None
             ):
+
+        max_channel = np.max(channels)
+        n_channels = len(channels)
+
+        sd.check_input_settings(
+            device=identifier,
+            channels=np.max([n_channels, max_channel+1]),
+            dtype=dtype,
+            extra_settings=extra_settings,
+            samplerate=sampling_rate)
+
         super().__init__(
             identifier=identifier,
             sampling_rate=sampling_rate,
             block_size=block_size,
             dtype=dtype)
 
-        n_channels_input = sd.query_devices(identifier)['max_input_channels']
-        sd.check_input_settings(
-            device=identifier,
-            channels=n_channels_input,
-            dtype=dtype,
-            extra_settings=extra_settings,
-            samplerate=sampling_rate)
+        self._input_channels = channels
+        self.initialize()
+
+        if input_buffer is None:
+            input_buffer = SignalBuffer(
+                self.block_size,
+                pf.Signal(np.zeros(
+                        (self.n_channels_output, self.block_size),
+                        dtype=self.dtype),
+                    self.sampling_rate, fft_norm='rms'))
+
+        self._input_buffer = input_buffer
 
     def check_settings(
             self,
@@ -213,9 +230,33 @@ class InputAudioDevice(AudioDevice):
             samplerate=sampling_rate)
 
     @property
-    def n_channels_input(self):
+    def input_channels(self):
         """The number of input channels supported by the device"""
-        return sd.query_devices(self.id)['max_input_channels']
+        return self._input_channels
+
+    @property
+    def n_channels_input(self):
+        """The total number of output channels.
+
+        Returns
+        -------
+        int
+            The number of output channels
+        """
+        return len(self._input_channels)
+
+    @property
+    def _n_channels_stream(self):
+        """The number of output channels required for the stream.
+        This includes a number of unused pre-pended channels which need to be
+        filled with zeros before writing the portaudio buffer.
+        """
+        return np.max(self._input_channels) + 1
+
+    @property
+    def max_channels_input(self):
+        """The number of output channels supported by the device"""
+        return sd.query_devices(self.id, 'input')['max_output_channels']
 
     def _set_block_size(self, block_size):
         self.input_buffer.block_size = block_size
@@ -232,19 +273,14 @@ class InputAudioDevice(AudioDevice):
         except StopIteration as e:
             raise sd.CallbackStop("Buffer empty") from e
 
-    def initialize_record(self, n_channels):
+    def initialize(self):
         """Initialize the playback stream for a given number of channels.
-
-        Parameters
-        ----------
-        n_channels : int
-            The number of output channels for which the stream is opened.
         """
         ostream = sd.InputStream(
             self.sampling_rate,
             self.block_size,
             self.id,
-            n_channels,
+            self._n_channels_stream,
             self.dtype,
             callback=self.input_callback,
             finished_callback=self._finished_callback)
@@ -357,7 +393,7 @@ class OutputAudioDevice(AudioDevice):
     @property
     def max_channels_output(self):
         """The number of output channels supported by the device"""
-        return sd.query_devices(self.id)['max_output_channels']
+        return sd.query_devices(self.id, 'output')['max_output_channels']
 
     def output_callback(self, outdata, frames, time, status) -> None:
         """Portudio callback for output streams

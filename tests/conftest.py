@@ -2,7 +2,6 @@ import pytest
 from .utils import signal_buffer_stub
 from haiopy.buffers import SignalBuffer
 import pyfar as pf
-
 import numpy as np
 
 
@@ -20,7 +19,10 @@ def empty_buffer_stub():
     n_blocks = 10
     data = np.zeros((1, n_blocks*block_size), dtype='float32')
 
-    return signal_buffer_stub(block_size, data)
+    buffer = signal_buffer_stub(block_size, data)
+    duration = block_size*n_blocks/buffer.sampling_rate
+
+    return buffer, duration
 
 
 @pytest.fixture
@@ -29,8 +31,12 @@ def sine_buffer_stub():
 
     Returns
     -------
-    ArrayBuffer
-        Stub of ArrayBuffer
+    buffer: SignalBuffer
+        Stub of SignalBuffer
+    duration: float
+        Duration of the buffer in seconds. Required if waiting for the buffer
+        to finish is required.
+
     """
     sampling_rate = 44100
     block_size = 512
