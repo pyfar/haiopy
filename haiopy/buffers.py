@@ -4,7 +4,7 @@ from abc import abstractproperty, abstractmethod
 from threading import Event
 
 
-class Buffer(object):
+class _Buffer(object):
     """Abstract base class for audio buffers for block-wise iteration.
 
     The base class primarily implements buffer state related functionality.
@@ -102,7 +102,7 @@ class Buffer(object):
         self._stop("Resetting the buffer.")
 
 
-class SignalBuffer(Buffer):
+class SignalBuffer(_Buffer):
     """Buffer to block wise iterate a `pyfar.Signal`
 
     Examples

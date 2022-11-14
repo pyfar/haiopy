@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from haiopy.buffers import Buffer, SignalBuffer
+from haiopy.buffers import _Buffer, SignalBuffer
 import pytest
 import pyfar as pf
 
@@ -8,7 +8,7 @@ import pyfar as pf
 def test_buffer():
 
     block_size = 512
-    buffer = Buffer(block_size)
+    buffer = _Buffer(block_size)
 
     assert buffer._block_size == block_size
 
@@ -24,14 +24,14 @@ def test_buffer():
 
     with pytest.raises(
             ValueError, match='The block size needs to be an integer'):
-        Buffer(float(10))
+        _Buffer(float(10))
 
 
 def test_buffer_state():
     block_size = 512
 
     # create new buffer
-    buffer = Buffer(block_size)
+    buffer = _Buffer(block_size)
     buffer._start()
     assert buffer.is_active is True
 
