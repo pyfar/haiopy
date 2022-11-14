@@ -5,7 +5,7 @@ import pytest
 import pyfar as pf
 
 
-def test_buffer():
+def test_buffer_block_size():
 
     block_size = 512
     buffer = _Buffer(block_size)
@@ -99,17 +99,17 @@ def test_signal_buffer():
         buffer._strided_data, strided_buffer_data)
 
     # check first step
-    block_data = buffer.__next__()
+    block_data = next(buffer)
     npt.assert_array_equal(block_data, strided_buffer_data[..., 0, :])
 
     # check second step
-    block_data = buffer.__next__()
+    block_data = next(buffer)
     npt.assert_array_equal(block_data, strided_buffer_data[..., 1, :])
 
     # check if a error is raised if the end of the buffer is reached
     with pytest.raises(StopIteration, match="buffer is empty"):
         while True:
-            buffer.__next__()
+            next(buffer)
 
     # test the looping blocks
     buffer = SignalBuffer(block_size, sine)

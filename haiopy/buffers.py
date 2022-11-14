@@ -112,7 +112,7 @@ class SignalBuffer(_Buffer):
     >>> from haiopy.buffers import SignalBuffer
     >>> block_size = 512
     >>> sine = pf.signals.sine(440, 4*block_size)
-    >>> buffer = SignalBuffer(blockk_size, sine)
+    >>> buffer = SignalBuffer(block_size, sine)
     >>> for block in buffer:
     >>>     print(block)
 
@@ -137,7 +137,7 @@ class SignalBuffer(_Buffer):
         if not isinstance(signal, pf.Signal):
             raise ValueError("signal must be a pyfar.Signal object.")
         if signal.time.ndim > 2:
-            raise ValueError("Only two-dimensional arrays are allowed")
+            raise ValueError("Only one-dimensional arrays are allowed")
         self._data = self._pad_data(signal)
         self._update_data()
         self._index = 0
