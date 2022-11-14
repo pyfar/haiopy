@@ -65,7 +65,7 @@ def test_signal_buffer():
     sine = pf.signals.sine(
         440, n_samples, amplitude=[1, 1], sampling_rate=sampling_rate)
 
-    with pytest.raises(ValueError, match='two-dimensional'):
+    with pytest.raises(ValueError, match='one-dimensional'):
         SignalBuffer(
             block_size,
             pf.Signal(np.zeros((2, 3, block_size), 'float32'), sampling_rate))
