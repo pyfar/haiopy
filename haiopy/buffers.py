@@ -1,6 +1,7 @@
 import numpy as np
 import pyfar as pf
 from abc import abstractproperty, abstractmethod
+from threading import Event
 
 
 class Buffer(object):
@@ -20,7 +21,8 @@ class Buffer(object):
         self._check_block_size(block_size)
         self._block_size = block_size
         self._buffer = None
-        self._is_active = False
+        self._is_active = Event()
+        self._is_finished = Event()
 
     def _check_block_size(self, block_size):
         """Check if the block size is an integer."""
@@ -64,7 +66,7 @@ class Buffer(object):
     def is_active(self):
         """Return the state of the buffer.
         `True` if the buffer is active, `False` if inactive."""
-        return self._is_active
+        return self._is_active.is_set()
 
     def check_if_active(self):
         """Check if the buffer is active.
@@ -83,19 +85,21 @@ class Buffer(object):
 
     def _stop(self, msg="Buffer iteration stopped."):
         """Stop buffer iteration and set the state to inactive."""
-        self._is_active = False
+        self._is_active.clear()
+        self._is_finished.set()
         raise StopIteration(msg)
 
     def _start(self):
         """Set the state to active.
         Additional operations required before iterating the sub-class can be
         implemented in the respective sub-class."""
-        self._is_active = True
+        self._is_active.set()
+        self._is_finished.clear()
 
     def _reset(self):
         """Stop and reset the buffer.
         Resetting the buffer is implemented in the respective sub-class"""
-        self._stop()
+        self._stop("Resetting the buffer.")
 
 
 class SignalBuffer(Buffer):
@@ -216,3 +220,7 @@ class SignalBuffer(Buffer):
             self._index += 1
             return self._strided_data[..., current, :]
         self._stop("The buffer is empty.")
+
+    def _reset(self):
+        self._index = 0
+        super()._reset()

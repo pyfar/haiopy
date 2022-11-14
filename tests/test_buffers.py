@@ -122,6 +122,23 @@ def test_signal_buffer():
     assert buffer.is_active is False
 
 
+def test_writing_signal_buffer():
+    sampling_rate = 44100
+    block_size = 512
+
+    block_data = np.atleast_2d(np.arange(block_size))
+
+    sig = pf.Signal(np.zeros(block_size, dtype='float32'), sampling_rate)
+    buffer = SignalBuffer(block_size, sig)
+
+    next(buffer)[:] = block_data
+
+    # we need to stop the buffer which raises a StopIteration error
+    with pytest.raises(StopIteration):
+        buffer._stop()
+    np.testing.assert_array_equal(buffer.data.time, block_data)
+
+
 def test_signal_buffer_updates():
     sampling_rate = 44100
     n_blocks = 10
@@ -158,7 +175,7 @@ def test_signal_buffer_updates():
 
     # Check if Errors are raised when buffer is in use
     next(buffer)
-    assert buffer._is_active is True
+    assert buffer.is_active is True
 
     # Setting the block size is not allowed if the buffer is active
     with pytest.raises(BufferError, match="needs to be inactive"):
