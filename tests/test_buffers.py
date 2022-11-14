@@ -122,6 +122,26 @@ def test_signal_buffer():
     assert buffer.is_active is False
 
 
+def test_signal_buffer_padding():
+    sampling_rate = 44100
+    n_samples = 800
+
+    n_blocks = 2
+    block_size = 512
+    sine = pf.signals.sine(
+        440, n_samples, amplitude=[1], sampling_rate=sampling_rate)
+
+    buffer = SignalBuffer(block_size, sine)
+
+    assert buffer.data.n_samples == n_blocks*block_size
+
+    expected_data = np.concatenate((
+        np.squeeze(sine.time),
+        np.zeros(n_blocks*block_size-n_samples, dtype=float)))
+
+    npt.assert_equal(np.squeeze(buffer.data.time), expected_data)
+
+
 def test_writing_signal_buffer():
     sampling_rate = 44100
     block_size = 512
