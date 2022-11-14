@@ -4,6 +4,7 @@ from . import utils
 from unittest.mock import patch, MagicMock
 import time
 import pytest
+import pyfar as pf
 
 
 def default_device_multiface_fireface():
@@ -103,13 +104,15 @@ def test_sine_playback(sine_buffer_stub):
     out_device.check_settings()
 
     out_device.start()
-    time.sleep(duration)
+    assert out_device.output_buffer.is_active is True
+    out_device.wait()
+    assert out_device.output_buffer.is_active is False
 
 
-def test_recoring(empty_buffer_stub):
+def test_recording(empty_buffer_stub):
 
     buffer = empty_buffer_stub[0]
-    duration = empty_buffer_stub[1]
+    assert pf.dsp.rms(buffer.data) < 1e-14
 
     identifier, config = default_device_multiface_fireface()
 
@@ -120,6 +123,8 @@ def test_recoring(empty_buffer_stub):
     in_device.check_settings()
 
     in_device.start()
-    time.sleep(duration)
+    assert in_device.input_buffer.is_active is True
+    in_device.wait()
+    assert in_device.input_buffer.is_active is False
 
-    in_device.stop()
+    assert pf.dsp.rms(in_device.input_buffer.data) > 1e-10

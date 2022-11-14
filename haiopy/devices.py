@@ -145,16 +145,27 @@ class AudioDevice(_Device):
         """Stop the audio steam without finishing remaining buffers."""
         if self.stream.active is True:
             self.stream.abort()
+            self._stop_buffer()
 
     def close(self):
         """Close the audio device and release the sound card lock."""
         if self.stream is not None:
             self.stream.close()
+            self._stop_buffer()
 
     def stop(self):
         """Stop the audio stream after finishing the current buffer."""
         if self.stream.active is True:
             self.stream.stop()
+            self._stop_buffer()
+
+    @abstractmethod
+    def _stop_buffer(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _reset_buffer(self):
+        raise NotImplementedError()
 
 
 class InputAudioDevice(AudioDevice):
@@ -197,7 +208,7 @@ class InputAudioDevice(AudioDevice):
             input_buffer = SignalBuffer(
                 self.block_size,
                 pf.Signal(np.zeros(
-                        (self.n_channels_output, self.block_size),
+                        (self.n_channels_input, self.block_size),
                         dtype=self.dtype),
                     self.sampling_rate, fft_norm='rms'))
 
@@ -269,7 +280,7 @@ class InputAudioDevice(AudioDevice):
         assert not status
 
         try:
-            next(self._input_buffer)[:] = indata.T
+            next(self.input_buffer)[:] = indata[..., self.input_channels].T
         except StopIteration as e:
             raise sd.CallbackStop("Buffer empty") from e
 
@@ -285,6 +296,35 @@ class InputAudioDevice(AudioDevice):
             callback=self.input_callback,
             finished_callback=self._finished_callback)
         self._stream = ostream
+
+    @property
+    def input_buffer(self):
+        return self._input_buffer
+
+    @input_buffer.setter
+    def input_buffer(self, buffer):
+        if buffer.block_size != self.block_size:
+            raise ValueError(
+                "The buffer's block size does not match. ",
+                f"Needs to be {self.block_size}")
+
+        if buffer.n_channels != self.n_channels_input:
+            raise ValueError(
+                "The buffer's channel number does not match the channel "
+                f"mapping. Currently used channels are {self.output_channels}")
+
+        self._input_buffer = buffer
+
+    def _stop_buffer(self):
+        self.input_buffer._stop()
+
+    def start(self):
+        super().start()
+        self.input_buffer._is_active.wait()
+
+    def wait(self):
+        super().wait()
+        self.input_buffer._is_finished.wait()
 
 
 class OutputAudioDevice(AudioDevice):
@@ -426,10 +466,8 @@ class OutputAudioDevice(AudioDevice):
             full_outdata = np.zeros(
                 (self._n_channels_stream, self.block_size),
                 dtype=self.dtype)
-
-            full_outdata[self.output_channels] = next(self._output_buffer)
+            full_outdata[self.output_channels] = next(self.output_buffer)
             outdata[:] = full_outdata.T
-            # outdata[:] = next(self._output_buffer).T
         except StopIteration as e:
             raise sd.CallbackStop("Buffer empty") from e
 
@@ -462,3 +500,14 @@ class OutputAudioDevice(AudioDevice):
                 f"mapping. Currently used channels are {self.output_channels}")
 
         self._output_buffer = buffer
+
+    def _stop_buffer(self):
+        self._output_buffer._stop()
+
+    def start(self):
+        super().start()
+        self.output_buffer._is_active.wait()
+
+    def wait(self):
+        super().wait()
+        self.output_buffer._is_finished.wait()
