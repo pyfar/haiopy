@@ -99,7 +99,9 @@ class _Buffer(object):
     def _reset(self):
         """Stop and reset the buffer.
         Resetting the buffer is implemented in the respective sub-class"""
-        self._stop("Resetting the buffer.")
+        self._is_active.clear()
+        self._is_finished.clear()
+        raise StopIteration("Resetting the buffer.")
 
 
 class SignalBuffer(_Buffer):
