@@ -297,6 +297,12 @@ class InputAudioDevice(AudioDevice):
             finished_callback=self._finished_callback)
         self._stream = ostream
 
+    def initialize_buffer(self):
+        """Initialize the buffer
+        """
+        self.input_buffer._start()
+        self.input_buffer._is_active.wait()
+
     @property
     def input_buffer(self):
         return self._input_buffer
@@ -319,8 +325,8 @@ class InputAudioDevice(AudioDevice):
         self.input_buffer._stop()
 
     def start(self):
+        self.initialize_buffer()
         super().start()
-        self.input_buffer._is_active.wait()
 
     def wait(self):
         super().wait()
@@ -488,6 +494,10 @@ class OutputAudioDevice(AudioDevice):
             finished_callback=self._finished_callback)
         self._stream = ostream
 
+    def initialize_buffer(self):
+        self.output_buffer._start()
+        self.output_buffer._is_active.wait()
+
     @property
     def output_buffer(self):
         return self._output_buffer
@@ -510,8 +520,9 @@ class OutputAudioDevice(AudioDevice):
         self._output_buffer._stop()
 
     def start(self):
-        super().start()
+        self.output_buffer._start()
         self.output_buffer._is_active.wait()
+        super().start()
 
     def wait(self):
         super().wait()
