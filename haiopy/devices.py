@@ -425,10 +425,15 @@ class OutputAudioDevice(AudioDevice):
     @property
     def _n_channels_stream(self):
         """The number of output channels required for the stream.
+
         This includes a number of unused pre-pended channels which need to be
-        filled with zeros before writing the portaudio buffer.
+        filled with zeros before writing the portaudio buffer. In case of
+        using only the first channel, portaudio plays back a mono signal,
+        which will be broadcasted to the first two channels. To avoid this,
+        the minimum number of channels opened is always two, the unused second
+        channel is filled with zeros.
         """
-        return np.max(self._output_channels) + 1
+        return np.max((2, np.max(self._output_channels) + 1))
 
     @property
     def max_channels_output(self):
