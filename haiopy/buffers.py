@@ -1,9 +1,10 @@
 import numpy as np
 import pyfar as pf
 from abc import abstractproperty, abstractmethod
+from threading import Event
 
 
-class Buffer(object):
+class _Buffer(object):
     """Abstract base class for audio buffers for block-wise iteration.
 
     The base class primarily implements buffer state related functionality.
@@ -20,7 +21,8 @@ class Buffer(object):
         self._check_block_size(block_size)
         self._block_size = block_size
         self._buffer = None
-        self._is_active = False
+        self._is_active = Event()
+        self._is_finished = Event()
 
     def _check_block_size(self, block_size):
         """Check if the block size is an integer."""
@@ -64,7 +66,7 @@ class Buffer(object):
     def is_active(self):
         """Return the state of the buffer.
         `True` if the buffer is active, `False` if inactive."""
-        return self._is_active
+        return self._is_active.is_set()
 
     def check_if_active(self):
         """Check if the buffer is active.
@@ -83,22 +85,26 @@ class Buffer(object):
 
     def _stop(self, msg="Buffer iteration stopped."):
         """Stop buffer iteration and set the state to inactive."""
-        self._is_active = False
+        self._is_active.clear()
+        self._is_finished.set()
         raise StopIteration(msg)
 
     def _start(self):
         """Set the state to active.
         Additional operations required before iterating the sub-class can be
         implemented in the respective sub-class."""
-        self._is_active = True
+        self._is_active.set()
+        self._is_finished.clear()
 
     def _reset(self):
         """Stop and reset the buffer.
         Resetting the buffer is implemented in the respective sub-class"""
-        self._stop()
+        self._is_active.clear()
+        self._is_finished.clear()
+        raise StopIteration("Resetting the buffer.")
 
 
-class SignalBuffer(Buffer):
+class SignalBuffer(_Buffer):
     """Buffer to block wise iterate a `pyfar.Signal`
 
     Examples
@@ -108,7 +114,7 @@ class SignalBuffer(Buffer):
     >>> from haiopy.buffers import SignalBuffer
     >>> block_size = 512
     >>> sine = pf.signals.sine(440, 4*block_size)
-    >>> buffer = SignalBuffer(blockk_size, sine)
+    >>> buffer = SignalBuffer(block_size, sine)
     >>> for block in buffer:
     >>>     print(block)
 
@@ -133,7 +139,7 @@ class SignalBuffer(Buffer):
         if not isinstance(signal, pf.Signal):
             raise ValueError("signal must be a pyfar.Signal object.")
         if signal.time.ndim > 2:
-            raise ValueError("Only two-dimensional arrays are allowed")
+            raise ValueError("Only one-dimensional arrays are allowed")
         self._data = self._pad_data(signal)
         self._update_data()
         self._index = 0
@@ -216,3 +222,7 @@ class SignalBuffer(Buffer):
             self._index += 1
             return self._strided_data[..., current, :]
         self._stop("The buffer is empty.")
+
+    def _reset(self):
+        self._index = 0
+        super()._reset()

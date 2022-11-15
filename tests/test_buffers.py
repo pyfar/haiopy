@@ -1,14 +1,14 @@
 import numpy as np
 import numpy.testing as npt
-from haiopy.buffers import Buffer, SignalBuffer
+from haiopy.buffers import _Buffer, SignalBuffer
 import pytest
 import pyfar as pf
 
 
-def test_buffer():
+def test_buffer_block_size():
 
     block_size = 512
-    buffer = Buffer(block_size)
+    buffer = _Buffer(block_size)
 
     assert buffer._block_size == block_size
 
@@ -24,14 +24,14 @@ def test_buffer():
 
     with pytest.raises(
             ValueError, match='The block size needs to be an integer'):
-        Buffer(float(10))
+        _Buffer(float(10))
 
 
 def test_buffer_state():
     block_size = 512
 
     # create new buffer
-    buffer = Buffer(block_size)
+    buffer = _Buffer(block_size)
     buffer._start()
     assert buffer.is_active is True
 
@@ -65,7 +65,7 @@ def test_signal_buffer():
     sine = pf.signals.sine(
         440, n_samples, amplitude=[1, 1], sampling_rate=sampling_rate)
 
-    with pytest.raises(ValueError, match='two-dimensional'):
+    with pytest.raises(ValueError, match='one-dimensional'):
         SignalBuffer(
             block_size,
             pf.Signal(np.zeros((2, 3, block_size), 'float32'), sampling_rate))
@@ -99,17 +99,17 @@ def test_signal_buffer():
         buffer._strided_data, strided_buffer_data)
 
     # check first step
-    block_data = buffer.__next__()
+    block_data = next(buffer)
     npt.assert_array_equal(block_data, strided_buffer_data[..., 0, :])
 
     # check second step
-    block_data = buffer.__next__()
+    block_data = next(buffer)
     npt.assert_array_equal(block_data, strided_buffer_data[..., 1, :])
 
     # check if a error is raised if the end of the buffer is reached
     with pytest.raises(StopIteration, match="buffer is empty"):
         while True:
-            buffer.__next__()
+            next(buffer)
 
     # test the looping blocks
     buffer = SignalBuffer(block_size, sine)
@@ -120,6 +120,43 @@ def test_signal_buffer():
 
     # check if state is set to inactive after loop finished
     assert buffer.is_active is False
+
+
+def test_signal_buffer_padding():
+    sampling_rate = 44100
+    n_samples = 800
+
+    n_blocks = 2
+    block_size = 512
+    sine = pf.signals.sine(
+        440, n_samples, amplitude=[1], sampling_rate=sampling_rate)
+
+    buffer = SignalBuffer(block_size, sine)
+
+    assert buffer.data.n_samples == n_blocks*block_size
+
+    expected_data = np.concatenate((
+        np.squeeze(sine.time),
+        np.zeros(n_blocks*block_size-n_samples, dtype=float)))
+
+    npt.assert_equal(np.squeeze(buffer.data.time), expected_data)
+
+
+def test_writing_signal_buffer():
+    sampling_rate = 44100
+    block_size = 512
+
+    block_data = np.atleast_2d(np.arange(block_size))
+
+    sig = pf.Signal(np.zeros(block_size, dtype='float32'), sampling_rate)
+    buffer = SignalBuffer(block_size, sig)
+
+    next(buffer)[:] = block_data
+
+    # we need to stop the buffer which raises a StopIteration error
+    with pytest.raises(StopIteration):
+        buffer._stop()
+    np.testing.assert_array_equal(buffer.data.time, block_data)
 
 
 def test_signal_buffer_updates():
@@ -158,7 +195,7 @@ def test_signal_buffer_updates():
 
     # Check if Errors are raised when buffer is in use
     next(buffer)
-    assert buffer._is_active is True
+    assert buffer.is_active is True
 
     # Setting the block size is not allowed if the buffer is active
     with pytest.raises(BufferError, match="needs to be inactive"):
