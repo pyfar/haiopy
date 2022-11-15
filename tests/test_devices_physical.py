@@ -45,6 +45,10 @@ def test_default_device_helper():
         assert device['max_input_channels'] == 2
         assert device['max_output_channels'] == 4
 
+# -----------------------------------------------------------------------------
+# Input Device Tests
+# -----------------------------------------------------------------------------
+
 
 def test_check_input_settings():
     identifier, config = default_device_multiface_fireface()
@@ -68,6 +72,31 @@ def test_check_input_settings():
     in_device.check_settings(n_channels=config['max_input_channels'])
     with pytest.raises(sd.PortAudioError, match="Invalid"):
         in_device.check_settings(config['max_input_channels']+10)
+
+
+def test_recording(empty_buffer_stub):
+
+    buffer = empty_buffer_stub[0]
+    assert pf.dsp.rms(buffer.data) < 1e-14
+
+    identifier, config = default_device_multiface_fireface()
+
+    in_device = devices.InputAudioDevice(
+        identifier=identifier,
+        input_buffer=buffer,
+        channels=[1])
+    in_device.check_settings()
+
+    in_device.start()
+    assert in_device.input_buffer.is_active is True
+    in_device.wait()
+    assert in_device.input_buffer.is_active is False
+
+    assert pf.dsp.rms(in_device.input_buffer.data) > 1e-10
+
+# -----------------------------------------------------------------------------
+# Output Device Tests
+# -----------------------------------------------------------------------------
 
 
 def test_check_output_settings(empty_buffer_stub):
@@ -116,24 +145,3 @@ def test_sine_playback(sine_buffer_stub):
     assert out_device.output_buffer.is_active is True
     out_device.wait()
     assert out_device.output_buffer.is_active is False
-
-
-def test_recording(empty_buffer_stub):
-
-    buffer = empty_buffer_stub[0]
-    assert pf.dsp.rms(buffer.data) < 1e-14
-
-    identifier, config = default_device_multiface_fireface()
-
-    in_device = devices.InputAudioDevice(
-        identifier=identifier,
-        input_buffer=buffer,
-        channels=[1])
-    in_device.check_settings()
-
-    in_device.start()
-    assert in_device.input_buffer.is_active is True
-    in_device.wait()
-    assert in_device.input_buffer.is_active is False
-
-    assert pf.dsp.rms(in_device.input_buffer.data) > 1e-10
