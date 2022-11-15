@@ -10,10 +10,14 @@ import pyfar as pf
 def default_device_multiface_fireface():
     device_list = sd.query_devices()
     found = False
-    for identifier, device in enumerate(device_list):
-        if 'Fireface' in device['name'] or 'Multiface' in device['name']:
-            found = True
-            break
+
+    valid_devices = ['Multiface', 'Fireface', 'Scarlett 2i4']
+
+    for valid_device in valid_devices:
+        for identifier, device in enumerate(device_list):
+            if valid_device in device['name']:
+                found = True
+                break
     if not found:
         raise ValueError(
             "Please connect Fireface or Multiface, or specify test device.")
@@ -30,11 +34,16 @@ def test_default_device_helper():
     identifier, device = default_device_multiface_fireface()
     fireface = 'Fireface' in sd.query_devices(identifier)['name']
     multiface = 'Multiface' in sd.query_devices(identifier)['name']
-    assert fireface or multiface
+    scarlett = 'Scarlett 2i4' in sd.query_devices(identifier)['name']
+    assert fireface or multiface or scarlett
 
     if fireface:
         assert device['max_input_channels'] == 18
         assert device['max_output_channels'] == 18
+
+    if scarlett:
+        assert device['max_input_channels'] == 2
+        assert device['max_output_channels'] == 4
 
 
 def test_check_input_settings():
