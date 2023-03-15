@@ -1,4 +1,4 @@
-import sounddevice as sd
+import sounddevice as sd  # noqa: F401 TODO: remove this after implementation
 
 
 def list_devices():
