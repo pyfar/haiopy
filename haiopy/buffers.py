@@ -1,6 +1,6 @@
 import numpy as np
 import pyfar as pf
-from abc import abstractproperty, abstractmethod
+from abc import abstractmethod
 from threading import Event
 
 
@@ -44,7 +44,8 @@ class _Buffer(object):
         """Set the block size in samples. Only integer values are supported"""
         self._set_block_size(block_size)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def sampling_rate(self):
         """Return sampling rate."""
         pass
