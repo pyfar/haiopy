@@ -474,11 +474,12 @@ class OutputAudioDevice(AudioDevice):
         assert not status
 
         try:
-            full_outdata = np.zeros(
-                (self._n_channels_stream, self.block_size),
-                dtype=self.dtype)
-            full_outdata[self.output_channels] = next(self.output_buffer)
-            outdata[:] = full_outdata.T
+            # Write a block to an array with all required output channels
+            # including zeros for unused channels. Required as sounddevice does
+            # not support routing matrices
+            self._stream_block_out[self.output_channels] = next(
+                self.output_buffer)
+            outdata[:] = self._stream_block_out.T
         except StopIteration as e:
             raise sd.CallbackStop("Buffer empty") from e
 
@@ -493,6 +494,11 @@ class OutputAudioDevice(AudioDevice):
             callback=self.output_callback,
             finished_callback=self._finished_callback)
         self._stream = ostream
+        # Init array buffering a block of all required output channels
+        # including zeros for unused channels. Required as sounddevice does
+        # not support routing matrices
+        self._stream_block_out = np.zeros(
+            (self._n_channels_stream, self.block_size), dtype=self.dtype)
 
     def initialize_buffer(self):
         self.output_buffer._start()
