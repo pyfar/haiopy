@@ -103,3 +103,6 @@ ENV/
 
 # IDE settings
 .vscode/
+
+# workaround for failing test discovery in vscode
+tests/private/

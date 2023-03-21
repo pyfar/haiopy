@@ -227,3 +227,98 @@ class SignalBuffer(_Buffer):
     def _reset(self):
         self._index = 0
         super()._reset()
+
+
+class SineBuffer(_Buffer):
+    "Buffer to block wise calculate a `pyfar.signals.sine`"
+
+    def __init__(self,
+                 frequency,
+                 block_size,
+                 amplitude = 1,
+                 sampling_rate = 44100) -> None:
+        """
+        Docstring
+        """
+        super().__init__(block_size)
+        self._frequency = frequency
+        self._amplitude = amplitude
+        self._sampling_rate = sampling_rate
+        self._phase = 0
+        self._data = self._sine()
+
+    @property
+    def frequency(self):
+        """Return the frequency of the sinewave"""
+        return self._frequency
+    
+    @frequency.setter
+    def frequency(self, frequency):
+        self.check_if_active()
+        self._frequency = frequency
+        self._update_data()
+    
+    @property
+    def amplitude(self):
+        """Return the amplitude of the sinewave"""
+        return self._amplitude
+    
+    @amplitude.setter
+    def amplitude(self, amplitude):
+        self.check_if_active()
+        self._amplitude = amplitude
+        self._update_data()
+
+    @property
+    def sampling_rate(self):
+        """Return the sampling rate of the generated sinewave."""
+        return self.sampling_rate
+    
+    @sampling_rate.setter
+    def sampling_rate(self, sampling_rate):
+        self.check_if_active()
+        self._sampling_rate = sampling_rate
+        self._update_data()
+    
+    @property
+    def phase(self):
+        """Return the current phase of the sinewave"""
+        self.check_if_active()
+        return self._phase
+    
+    @property
+    def data(self):
+        """Return the underlying signal if the buffer is not active."""
+        self.check_if_active()
+        return self._data
+    
+    def _set_block_size(self, block_size):
+        self.check_if_active()
+        super()._set_block_size(block_size)
+        self._update_data()
+
+    def _update_data(self):
+        """Calculates updated sine wave and sets the phase to zero."""
+        self._phase = 0
+        self._data = self._sine()
+    
+    def _sine(self):
+        """Return the sine Signal."""
+        return pf.signals.sine(self._frequency,
+                               self._block_size,
+                               self._amplitude,
+                               self._phase,
+                               self._sampling_rate)
+    
+    def next(self):
+        """Return the next audio block as numpy array and increases the phase.
+        """
+        self._phase += 2*np.pi*self._frequency*(self._block_size
+                                                /self._sampling_rate)
+        self._data = self._sine()
+        return self._data.time
+    
+    def _reset(self):
+        self._update_data()
+        super()._reset()
+
