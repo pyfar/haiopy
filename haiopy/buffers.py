@@ -229,7 +229,7 @@ class SignalBuffer(_Buffer):
         super()._reset()
 
 
-class SineBuffer(_Buffer):
+class SineGenerator(_Buffer):
     "Buffer to block wise calculate a `pyfar.signals.sine`"
 
     def __init__(self,
@@ -283,14 +283,7 @@ class SineBuffer(_Buffer):
     @property
     def phase(self):
         """Return the current phase of the sinewave"""
-        self.check_if_active()
         return self._phase
-
-    @property
-    def data(self):
-        """Return the underlying signal if the buffer is not active."""
-        self.check_if_active()
-        return self._data
 
     def _set_block_size(self, block_size):
         self.check_if_active()
@@ -304,19 +297,16 @@ class SineBuffer(_Buffer):
 
     def _sine(self):
         """Return the sine Signal."""
-        return pf.signals.sine(self._frequency,
-                               self._block_size,
-                               self._amplitude,
-                               self._phase,
-                               self._sampling_rate)
+        return self._amplitude * np.sin(2 * np.pi * self._frequency
+                                        (np.arange(self._blocksize) /
+                                         self._sampling_rate)+self._phase)
 
     def next(self):
         """Return the next audio block as numpy array and increases the phase.
         """
-        self._phase += 2*np.pi*self._frequency*(self._block_size
-                                                / self._sampling_rate)
-        self._data = self._sine()
-        return self._data.time
+        self._phase += 2*np.pi*self._frequency*(self._block_size /
+                                                self._sampling_rate)
+        return self._sine()
 
     def _reset(self):
         self._update_data()
