@@ -71,10 +71,12 @@ class _Buffer(object):
         return self._is_active.is_set()
 
     def check_if_active(self):
-        """Check if the buffer is active.
+        """Check if the buffer is active and raise an exception if so.
         If the buffer is active a BufferError exception is raised. In case the
         buffer is currently inactive, the method simply passes without any
-        return value.
+        return value. This method should always be called before attempting to
+        modify properties of the buffer to prevent undefined behavior during
+        iteration of the buffer.
 
         Raises
         ------
