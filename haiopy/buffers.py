@@ -31,6 +31,7 @@ class _Buffer(object):
 
     def _set_block_size(self, block_size):
         """Private block size setter implementing validity checks."""
+        self.check_if_active()
         self._check_block_size(block_size)
         self._block_size = block_size
 
@@ -199,7 +200,6 @@ class SignalBuffer(_Buffer):
         self._update_data()
 
     def _set_block_size(self, block_size):
-        self.check_if_active()
         super()._set_block_size(block_size)
         self._update_data()
 
