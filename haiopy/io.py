@@ -1,4 +1,4 @@
-from . import devices
+from . import devices  # noqa: F401 TODO: remove this after implementation
 
 
 class _AudioIO(object):

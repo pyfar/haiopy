@@ -1,6 +1,6 @@
 import numpy as np
 import pyfar as pf
-from abc import abstractproperty, abstractmethod
+from abc import abstractmethod
 from threading import Event
 
 
@@ -31,6 +31,7 @@ class _Buffer(object):
 
     def _set_block_size(self, block_size):
         """Private block size setter implementing validity checks."""
+        self.check_if_active()
         self._check_block_size(block_size)
         self._block_size = block_size
 
@@ -44,7 +45,8 @@ class _Buffer(object):
         """Set the block size in samples. Only integer values are supported"""
         self._set_block_size(block_size)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def sampling_rate(self):
         """Return sampling rate."""
         pass
@@ -69,10 +71,12 @@ class _Buffer(object):
         return self._is_active.is_set()
 
     def check_if_active(self):
-        """Check if the buffer is active.
+        """Check if the buffer is active and raise an exception if so.
         If the buffer is active a BufferError exception is raised. In case the
         buffer is currently inactive, the method simply passes without any
-        return value.
+        return value. This method should always be called before attempting to
+        modify properties of the buffer to prevent undefined behavior during
+        iteration of the buffer.
 
         Raises
         ------
@@ -198,7 +202,6 @@ class SignalBuffer(_Buffer):
         self._update_data()
 
     def _set_block_size(self, block_size):
-        self.check_if_active()
         super()._set_block_size(block_size)
         self._update_data()
 

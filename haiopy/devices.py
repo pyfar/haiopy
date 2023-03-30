@@ -2,7 +2,7 @@ from multiprocessing import Event
 import numpy as np
 import sys
 import sounddevice as sd
-from abc import (ABCMeta, abstractmethod, abstractproperty)
+from abc import abstractmethod
 
 from haiopy.buffers import SignalBuffer
 import pyfar as pf
@@ -109,7 +109,8 @@ class AudioDevice(_Device):
     def dtype(self):
         return self._dtype
 
-    @abstractproperty
+    @abstractmethod
+    @property
     def stream(self):
         """The sounddevice audio stream.
         """
