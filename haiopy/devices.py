@@ -109,8 +109,8 @@ class AudioDevice(_Device):
     def dtype(self):
         return self._dtype
 
-    @abstractmethod
     @property
+    @abstractmethod
     def stream(self):
         """The sounddevice audio stream.
         """
