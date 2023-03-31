@@ -21,5 +21,5 @@ def test_check_input_settings():
 @patch('sounddevice.OutputStream', new=sdm.output_stream_mock())
 def test_check_output_settings(empty_buffer_stub):
     out_device = devices.OutputAudioDevice(
-        output_buffer=empty_buffer_stub)
+        output_buffer=empty_buffer_stub[0])
     out_device.check_settings()
