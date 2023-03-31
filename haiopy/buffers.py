@@ -70,6 +70,13 @@ class _Buffer(object):
         `True` if the buffer is active, `False` if inactive."""
         return self._is_active.is_set()
 
+    @property
+    def is_finished(self):
+        """Return if the buffer has finished iteration.
+        `True` if the buffer is finished, `False` if not.
+        """
+        return self._is_finished.is_set()
+
     def check_if_active(self):
         """Check if the buffer is active and raise an exception if so.
         If the buffer is active a BufferError exception is raised. In case the

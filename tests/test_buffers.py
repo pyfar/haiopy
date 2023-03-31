@@ -120,6 +120,7 @@ def test_signal_buffer():
 
     # check if state is set to inactive after loop finished
     assert buffer.is_active is False
+    assert buffer.is_finished is True
 
 
 def test_signal_buffer_padding():
