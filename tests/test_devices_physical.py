@@ -1,10 +1,7 @@
 from haiopy import devices
 import sounddevice as sd
-from . import utils
-from unittest.mock import patch, MagicMock
-import time
 import pytest
-import pyfar as pf
+import os
 
 
 def default_device_multiface_fireface(kind='both'):
@@ -29,6 +26,8 @@ def default_device_multiface_fireface(kind='both'):
     return identifier, device
 
 
+@pytest.mark.skipif(os.environ.get('CI') == 'true',
+                    reason="CI does not have a soundcard")
 def test_default_device_helper():
     identifier, device = default_device_multiface_fireface()
     fireface = 'Fireface' in sd.query_devices(identifier)['name']
@@ -54,6 +53,8 @@ def test_default_device_helper():
 # -----------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(os.environ.get('CI') == 'true',
+                    reason="CI does not have a soundcard")
 def test_check_output_settings(empty_buffer_stub):
     identifier, config = default_device_multiface_fireface()
     channels = [3]
@@ -81,6 +82,8 @@ def test_check_output_settings(empty_buffer_stub):
         out_device.check_settings(config['max_output_channels']+10)
 
 
+@pytest.mark.skipif(os.environ.get('CI') == 'true',
+                    reason="CI does not have a soundcard")
 def test_sine_playback(sine_buffer_stub):
 
     buffer = sine_buffer_stub[0]
