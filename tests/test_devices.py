@@ -54,7 +54,7 @@ def test_check_init(empty_buffer_stub):
 
 @patch('sounddevice.query_devices', new=utils.query_devices)
 @patch('sounddevice.check_output_settings', new=utils.check_output_settings)
-@patch('sounddevice.outputstream', new=sdm.output_stream_mock())
+@patch('sounddevice.OutputStream', new=sdm.output_stream_mock())
 def test_sine_playback(sine_buffer_stub):
     buffer = sine_buffer_stub[0]
 
