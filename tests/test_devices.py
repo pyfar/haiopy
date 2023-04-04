@@ -47,6 +47,10 @@ def test_check_init(empty_buffer_stub):
     out_device._block_size == new_block_size
     out_device.output_buffer.block_size == new_block_size
 
+    # set and get sampling rate
+    out_device.sampling_rate = 44100
+    out_device._sampling_rate == 44100
+
 
 @patch('sounddevice.query_devices', new=utils.query_devices)
 @patch('sounddevice.check_output_settings', new=utils.check_output_settings)

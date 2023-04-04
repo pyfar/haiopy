@@ -77,7 +77,7 @@ class AudioDevice(_Device):
 
     @abstractmethod
     def check_settings(**kwargs):
-        pass
+        raise NotImplementedError('Needs to be implemented in child class.')
 
     @property
     def name(self):
@@ -93,7 +93,7 @@ class AudioDevice(_Device):
 
     @sampling_rate.setter
     def sampling_rate(self, value):
-        self.check_settings(value, self.dtype, self._extra_settings)
+        self.check_settings(value, None, None)
 
     @property
     def block_size(self):
