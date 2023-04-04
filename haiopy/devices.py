@@ -212,9 +212,6 @@ class OutputAudioDevice(AudioDevice):
                         (self.n_channels_output, self.block_size),
                         dtype=self.dtype),
                     self.sampling_rate, fft_norm='rms'))
-        # if output_buffer.data.shape[0] != self.n_channels_output:
-        #     raise ValueError(
-                # "The shape of the buffer does not match the channel mapping")
         self.output_buffer = output_buffer
         self.initialize()
 

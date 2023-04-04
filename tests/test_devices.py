@@ -26,15 +26,31 @@ def test_check_output_settings(empty_buffer_stub):
 @patch('sounddevice.check_output_settings', new=utils.check_output_settings)
 @patch('sounddevice.OutputStream', new=sdm.output_stream_mock())
 def test_check_init(empty_buffer_stub):
+    buffer = empty_buffer_stub[0]
     out_device = devices.OutputAudioDevice(
         output_buffer=empty_buffer_stub[0])
     out_device.check_settings()
 
+    out_device.output_buffer = buffer
+    out_device._output_buffer == buffer
+    out_device.output_buffer == buffer
+
+    # set a buffer with non matching block size
+    buffer.block_size = 256
+    with pytest.raises(ValueError, match='block size does not match'):
+        out_device.output_buffer = buffer
+
+    # change the block size of the buffer and check if buffers block size is
+    # set accordingly
+    new_block_size = 256
+    out_device.block_size = new_block_size
+    out_device._block_size == new_block_size
+    out_device.output_buffer.block_size == new_block_size
 
 
 @patch('sounddevice.query_devices', new=utils.query_devices)
 @patch('sounddevice.check_output_settings', new=utils.check_output_settings)
-@patch('sounddevice.OutputStream', new=sdm.output_stream_mock())
+@patch('sounddevice.outputstream', new=sdm.output_stream_mock())
 def test_sine_playback(sine_buffer_stub):
     buffer = sine_buffer_stub[0]
 
