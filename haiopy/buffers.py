@@ -230,22 +230,47 @@ class SignalBuffer(_Buffer):
 
 
 class SineGenerator(_Buffer):
-    "Buffer to block wise calculate a `pyfar.signals.sine`"
+    """Generator to block wise calculate a sinewave`
+
+    Examples
+    --------
+
+    >>> from haiopy.buffers import SineGenerator
+    >>> import matplotlib.pyplot as plt
+    >>> sine = SineGenerator(440, 128)
+    >>> blocks = [next(sine), next(sine), next(sine)]
+    >>> for block in blocks:
+    >>>     plt.plot((block))
+    >>> plt.show()
+
+
+    """
 
     def __init__(self,
                  frequency,
                  block_size,
                  amplitude=1,
                  sampling_rate=44100) -> None:
-        """
-        Docstring
+        """Initialize a `SineGenerator`with a given frequency, block_size,
+        amplitude and samplingrate.
+
+        Parameters
+        ----------
+        frequency : double
+            Frequency of the sine in Hz(0 <= `frequency` <= `sampling_rate`/2).
+        block_size : int
+            The block size in samples.
+        amplitude: double, optional
+            The amplitude of the sine. The default is ``1``.
+        sampling_rate : int, optional
+            The sampling rate in Hz. The default is ``44100``.
+
         """
         super().__init__(block_size)
         self._frequency = frequency
         self._amplitude = amplitude
         self._sampling_rate = sampling_rate
         self._phase = 0
-        self._data = self._sine()
 
     @property
     def frequency(self):
@@ -256,7 +281,7 @@ class SineGenerator(_Buffer):
     def frequency(self, frequency):
         self.check_if_active()
         self._frequency = frequency
-        self._update_data()
+        self._phase = 0
 
     @property
     def amplitude(self):
@@ -267,18 +292,18 @@ class SineGenerator(_Buffer):
     def amplitude(self, amplitude):
         self.check_if_active()
         self._amplitude = amplitude
-        self._update_data()
+        self._phase = 0
 
     @property
     def sampling_rate(self):
         """Return the sampling rate of the generated sinewave."""
-        return self.sampling_rate
+        return self._sampling_rate
 
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
         self.check_if_active()
         self._sampling_rate = sampling_rate
-        self._update_data()
+        self._phase = 0
 
     @property
     def phase(self):
@@ -288,26 +313,17 @@ class SineGenerator(_Buffer):
     def _set_block_size(self, block_size):
         self.check_if_active()
         super()._set_block_size(block_size)
-        self._update_data()
-
-    def _update_data(self):
-        """Calculates updated sine wave and sets the phase to zero."""
         self._phase = 0
-        self._data = self._sine()
-
-    def _sine(self):
-        """Return the sine Signal."""
-        return self._amplitude * np.sin(2 * np.pi * self._frequency
-                                        (np.arange(self._blocksize) /
-                                         self._sampling_rate)+self._phase)
 
     def next(self):
         """Return the next audio block as numpy array and increases the phase.
         """
-        self._phase += 2*np.pi*self._frequency*(self._block_size /
-                                                self._sampling_rate)
-        return self._sine()
+        omega = 2 * np.pi * self._frequency
+        data = self._amplitude * np.sin(
+            omega*np.arange(self._block_size)/self._sampling_rate+self._phase)
+        self._phase += omega*(self._block_size / self._sampling_rate)
+        return data
 
     def _reset(self):
-        self._update_data()
+        self._phase = 0
         super()._reset()
