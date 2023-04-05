@@ -104,7 +104,6 @@ class AudioDevice(_Device):
     @block_size.setter
     def block_size(self, block_size):
         self._block_size = block_size
-        self.output_buffer.block_size = block_size
 
     @property
     def dtype(self):
@@ -355,6 +354,18 @@ class OutputAudioDevice(AudioDevice):
                 f"mapping. Currently used channels are {self.output_channels}")
 
         self._output_buffer = buffer
+
+    @property
+    def block_size(self):
+        return self._block_size
+
+    @block_size.setter
+    def block_size(self, value):
+        if self.stream.active is True or self.output_buffer.is_active is True:
+            raise ValueError(
+                "The device is currently in use and needs to be closed first")
+        self.output_buffer.block_size = value
+        super(OutputAudioDevice, self.__class__).block_size.fset(self, value)
 
     def _stop_buffer(self):
         self._output_buffer._stop()

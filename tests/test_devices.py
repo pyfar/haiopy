@@ -51,6 +51,17 @@ def test_check_init(empty_buffer_stub):
     out_device.sampling_rate = 44100
     out_device._sampling_rate == 44100
 
+    # test if setters are blocked when the stream is in use
+    out_device.stream.active = True
+    with pytest.raises(ValueError, match='currently in use'):
+        out_device.block_size = 512
+
+    # test if setters are blocked when the buffer is in use
+    out_device.stream.active = False
+    out_device.output_buffer._start()
+    with pytest.raises(ValueError, match='currently in use'):
+        out_device.block_size = 512
+
 
 @patch('sounddevice.query_devices', new=utils.query_devices)
 @patch('sounddevice.check_output_settings', new=utils.check_output_settings)
