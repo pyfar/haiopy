@@ -374,5 +374,5 @@ class NoiseGenerator(_Buffer):
         return data
 
     def _reset(self):
-        self._seed_idx == 0
+        self._seed_idx = 0
         super()._reset()
