@@ -2,6 +2,7 @@ import numpy as np
 import pyfar as pf
 from abc import abstractmethod
 from threading import Event
+from pyfar.dsp import fft
 
 
 class _Buffer(object):
@@ -235,4 +236,143 @@ class SignalBuffer(_Buffer):
 
     def _reset(self):
         self._index = 0
+        super()._reset()
+
+
+class NoiseGenerator(_Buffer):
+    """Generator to block wise generate a Noise.
+
+    Examples
+    --------
+
+    >>> import pyfar as pf
+    >>> from haiopy.buffers import NoiseGenerator
+    >>> block_size = 22050
+    >>> noise = NoiseGenerator(block_size, seed=42)
+    >>> data = next(noise)
+    >>> pf.plot.time_freq(pf.Signal(data, 44100))
+
+
+    """
+    def __init__(self,
+                 block_size,
+                 spectrum="white",
+                 rms=1,
+                 sampling_rate=44100,
+                 seed=False) -> None:
+        """Initialize a `NoiseGenerator` with given block_size, spectrum,
+        rms, sampling_rate and seed. If seed is True, the data will
+        be calculated with a seed index to make it reproducible.
+
+        Parameters
+        ----------
+        block_size : int
+            The block size in samples.
+        spectrum: str, optional
+            ``white`` to generate noise with constant energy across frequency.
+            ``pink`` to generate noise with constant energy across filters with
+            constant relative bandwith. The default is ``white``.
+        rms : double, optional
+            The route mean square (RMS) value of the noise signal.
+            The default is ``1``.
+        sampling_rate :
+            The sampling rate in Hz. The default is ``44100``.
+        seed : bool, optional
+            The seed for the random generator. Set seed to ``True`` to make
+            the blocks reproducible. The default is ``False``, which will
+            yield to radom results for every block.
+
+        """
+        if spectrum not in ("white", "pink"):
+            raise ValueError(
+                f"spectrum is '{spectrum}' but must be 'white' or 'pink'")
+        if not isinstance(seed, bool):
+            raise ValueError("seed needs to be True or False.")
+        super().__init__(block_size)
+        self._spectrum = spectrum
+        self._rms = rms
+        self._sampling_rate = sampling_rate
+        self._seed = seed
+        self._seed_idx = 0
+
+    @property
+    def sampling_rate(self):
+        """Return the sampling rate of the generated Noise."""
+        return self._sampling_rate
+
+    @sampling_rate.setter
+    def sampling_rate(self, sampling_rate):
+        self.check_if_active()
+        self._sampling_rate = sampling_rate
+        self._seed_idx = 0
+
+    @property
+    def spectrum(self):
+        """Return if NoiseGenerator generates white or pink noise."""
+        return self._spectrum
+
+    @spectrum.setter
+    def spectrum(self, spectrum):
+        self.check_if_active()
+        if spectrum not in ("white", "pink"):
+            raise ValueError(
+                f"spectrum is '{spectrum}' but must be 'white' or 'pink'")
+        self._spectrum = spectrum
+        self._seed_idx = 0
+
+    @property
+    def rms(self):
+        """Return the route mean square (RMS) value of the noise."""
+        return self._rms
+
+    @rms.setter
+    def rms(self, rms):
+        self.check_if_active()
+        self._rms = rms
+        self._seed_idx = 0
+
+    @property
+    def seed(self):
+        """Return the seed of the random generator."""
+        return self._seed
+
+    @seed.setter
+    def seed(self, seed):
+        self.check_if_active()
+        if not isinstance(seed, bool):
+            raise ValueError("seed needs to be True or False.")
+        self._seed = seed
+        self._seed_idx = 0
+
+    def _set_block_size(self, block_size):
+        self.check_if_active()
+        super()._set_block_size(block_size)
+
+    def next(self):
+        """Return the next audio block as numpy array, and calcultes data
+        with seed_idx if seed is True.
+        """
+        if self._seed is False:
+            # generate random noise
+            rng = np.random.default_rng()
+        else:
+            # generate noise with seed = seed_idx to make it reproducible.
+            rng = np.random.default_rng(self._seed_idx)
+            self._seed_idx += 1
+
+        data = rng.standard_normal(self._block_size)
+        if self._spectrum == "pink":
+            # apply 1/f filter in the frequency domain
+            data = fft.rfft(data, self._block_size,
+                            self.sampling_rate, 'none')
+            data /= np.sqrt(np.arange(1, data.shape[-1]+1))
+            data = fft.irfft(data, self._block_size,
+                             self.sampling_rate, 'none')
+        # level the noise
+        rms_current = np.sqrt(np.mean(data**2))
+        data = data / rms_current * self._rms
+        return data
+
+    def _reset(self):
+        self._seed_idx == 0
         super()._reset()
