@@ -248,7 +248,7 @@ class NoiseGenerator(_Buffer):
     >>> import pyfar as pf
     >>> from haiopy.buffers import NoiseGenerator
     >>> block_size = 22050
-    >>> noise = NoiseGenerator(block_size, seed=42)
+    >>> noise = NoiseGenerator(block_size, seed=True)
     >>> data = next(noise)
     >>> pf.plot.time_freq(pf.Signal(data, 44100))
 
