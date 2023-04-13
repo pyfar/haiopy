@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.testing as npt
-from haiopy.buffers import _Buffer, SignalBuffer
+from haiopy.buffers import _Buffer, SignalBuffer, NoiseGenerator
 import pytest
 import pyfar as pf
 
@@ -208,3 +208,98 @@ def test_signal_buffer_updates():
 
     with pytest.raises(BufferError, match="needs to be inactive"):
         buffer.data
+
+
+def test_NoiseGenerator():
+    block_size = 512
+
+    noise = NoiseGenerator(block_size, seed=True)
+
+    # test getters with default
+    assert noise.block_size == block_size
+    assert noise.spectrum == "white"
+    assert noise.rms == 1
+    assert noise.sampling_rate == 44100
+    assert noise.seed is True
+
+    # check if noise generator is not active yet
+    assert noise.is_active is False
+
+    # check first block
+    rng = np.random.default_rng(0)
+    noise_data = rng.standard_normal(block_size)
+    # level the noise
+    noise_data /= np.sqrt(np.mean(noise_data**2))
+    block_data = next(noise)
+    npt.assert_array_equal(block_data, noise_data)
+
+    # check if noise generator is active now
+    assert noise.is_active is True
+
+    # check second block
+    rng = np.random.default_rng(1)
+    noise_data = rng.standard_normal(block_size)
+    # level the noise
+    noise_data /= np.sqrt(np.mean(noise_data**2))
+    block_data = next(noise)
+    npt.assert_array_equal(block_data, noise_data)
+
+
+def test_NoiseGenerator_updates():
+    block_size = 512
+    noise = NoiseGenerator(block_size)
+
+    # check if noise generator is not active yet
+    assert noise.is_active is False
+
+    # Update Parameters
+    new_block_size = 1028
+    noise.block_size = new_block_size
+    assert noise.block_size == new_block_size
+
+    new_spectrum = "pink"
+    noise.spectrum = new_spectrum
+    assert noise.spectrum == new_spectrum
+
+    new_rms = 0.5
+    noise.rms = new_rms
+    assert noise.rms == new_rms
+
+    new_sampling_rate = 48000
+    noise.sampling_rate = new_sampling_rate
+    assert noise.sampling_rate == new_sampling_rate
+
+    new_seed = True
+    noise.seed = new_seed
+    assert noise.seed == new_seed
+
+    # Check updated data and pink spectrum
+    rng = np.random.default_rng(0)
+    noise_data = rng.standard_normal(new_block_size)
+    # Apply 1/f filter for pink noise spectrum
+    noise_data = pf.dsp.fft.rfft(noise_data, new_block_size,
+                                 new_sampling_rate, 'none')
+    noise_data /= np.sqrt(np.arange(1, noise_data.shape[-1]+1))
+    noise_data = pf.dsp.fft.irfft(noise_data, new_block_size,
+                                  new_sampling_rate, 'none')
+    # level the noise
+    rms_current = np.sqrt(np.mean(noise_data**2))
+    noise_data = noise_data / rms_current * new_rms
+
+    block_data = next(noise)
+    npt.assert_array_equal(block_data, noise_data)
+
+    # Check if Errors are raised when NoiseGenerator is in use
+    assert noise.is_active is True
+
+    # Setting the Parameters is not allowed if the NoiseGenerator is active
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        noise.spectrum = "white"
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        noise.block_size = 256
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        noise.rms = 3
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        noise.sampling_rate = 24000
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        noise.seed = False
