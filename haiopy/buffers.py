@@ -341,8 +341,8 @@ class NoiseGenerator(_Buffer):
     @seed.setter
     def seed(self, seed):
         self.check_if_active()
-        """Seed will be set in _generate_rng, also a new Random Generator Object
-        is created"""
+        """Seed will be set in _generate_rng, also a new Random Generator
+        Object is created"""
         self._generate_rng(seed)
 
     def _generate_rng(self, seed):
