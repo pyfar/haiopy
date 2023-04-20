@@ -288,13 +288,25 @@ def test_NoiseGenerator_updates():
     # Apply Filter for Pink Noise
     B = [0.049922035, -0.095993537, 0.050612699, -0.004408786]
     A = [1, -2.494956002, 2.017265875, -0.522189400]
-    noise_data = signal.lfilter(B, A, noise_data)
+    zi = signal.lfilter_zi(B, A)
+    noise_data, zi2 = signal.lfilter(B, A, noise_data, zi=zi)
     # level the noise
     rms_current = np.sqrt(np.mean(noise_data**2))
     noise_data = noise_data / rms_current * new_rms
 
     block_data = next(noise)
     npt.assert_array_equal(block_data, noise_data)
+
+    """Apply filter to second block of data with initial conditions from
+    first block."""
+    noise_data2 = rng.standard_normal(new_block_size)
+    noise_data2, _ = signal.lfilter(B, A, noise_data2, zi=zi2)
+    # level the noise
+    rms_current = np.sqrt(np.mean(noise_data2**2))
+    noise_data2 = noise_data2 / rms_current * new_rms
+
+    block_data2 = next(noise)
+    npt.assert_array_equal(block_data2, noise_data2)
 
     # Check if Errors are raised when NoiseGenerator is in use
     assert noise.is_active is True

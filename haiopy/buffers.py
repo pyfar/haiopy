@@ -296,6 +296,7 @@ class NoiseGenerator(_Buffer):
         # filter coefficients for pink noise
         self._pink_B = [0.049922035, -0.095993537, 0.050612699, -0.004408786]
         self._pink_A = [1, -2.494956002, 2.017265875, -0.522189400]
+        self._zi = signal.lfilter_zi(self._pink_B, self._pink_A)
 
     @property
     def sampling_rate(self):
@@ -360,7 +361,8 @@ class NoiseGenerator(_Buffer):
         data = self._rng.standard_normal(self._block_size)
         if self._spectrum == "pink":
             # Apply Pink Noise Filter
-            data = signal.lfilter(self._pink_B, self._pink_A, data)
+            data, self._zi = signal.lfilter(self._pink_B, self._pink_A, data,
+                                            zi=self._zi)
         # level the noise
         rms_current = np.sqrt(np.mean(data**2))
         data = data / rms_current * self._rms
