@@ -261,8 +261,7 @@ class NoiseGenerator(_Buffer):
                  sampling_rate=44100,
                  seed=None) -> None:
         """Initialize a `NoiseGenerator` with given block_size, spectrum,
-        rms, sampling_rate and seed. If seed is True, the data will
-        be calculated with a seed index to make it reproducible.
+        rms, sampling_rate and seed.
 
         The filter coefficients for generating the pink noise are presented in
         <https://ccrma.stanford.edu/~jos/sasp/Example_Synthesis_1_F_Noise.html>.
