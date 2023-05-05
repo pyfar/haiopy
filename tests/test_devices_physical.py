@@ -12,7 +12,8 @@ def default_device_multiface_fireface(kind='both'):
         'Multiface',
         'Fireface',
         'Scarlett 2i4',
-        'MADIface']
+        'MADIface',
+        'Focusrite USB ASIO']
 
     for valid_device in valid_devices:
         for identifier, device in enumerate(device_list):
@@ -34,7 +35,8 @@ def test_default_device_helper():
     multiface = 'Multiface' in sd.query_devices(identifier)['name']
     scarlett = 'Scarlett 2i4' in sd.query_devices(identifier)['name']
     madiface = 'MADIface' in sd.query_devices(identifier)['name']
-    assert fireface or multiface or scarlett or madiface
+    focusrite = 'Focusrite USB ASIO' in sd.query_devices(identifier)['name']
+    assert fireface or multiface or scarlett or madiface or focusrite
 
     if fireface:
         assert device['max_input_channels'] == 18
@@ -48,6 +50,10 @@ def test_default_device_helper():
         assert device['max_input_channels'] == 196
         assert device['max_output_channels'] == 198
 
+    if focusrite:
+        assert device['max_input_channels'] == 2
+        assert device['max_output_channels'] == 2
+
 # -----------------------------------------------------------------------------
 # Output Device Tests
 # -----------------------------------------------------------------------------
@@ -57,7 +63,7 @@ def test_default_device_helper():
                     reason="CI does not have a soundcard")
 def test_check_output_settings(empty_buffer_stub):
     identifier, config = default_device_multiface_fireface()
-    channels = [3]
+    channels = [1]
     block_size = 512
 
     buffer = empty_buffer_stub[0]
@@ -81,6 +87,11 @@ def test_check_output_settings(empty_buffer_stub):
     with pytest.raises(sd.PortAudioError, match="Invalid"):
         out_device.check_settings(config['max_output_channels']+10)
 
+    # Close Output Stream for next Tests
+    with pytest.raises(StopIteration, match="iteration stopped"):
+        out_device.close()
+
+
 
 @pytest.mark.skipif(os.environ.get('CI') == 'true',
                     reason="CI does not have a soundcard")
@@ -102,3 +113,7 @@ def test_sine_playback(sine_buffer_stub):
     assert out_device.output_buffer.is_active is True
     out_device.wait()
     assert out_device.output_buffer.is_active is False
+
+    # Close Output Stream for next Tests
+    with pytest.raises(StopIteration, match="iteration stopped"):
+        out_device.close()
