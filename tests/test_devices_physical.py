@@ -13,7 +13,8 @@ def default_device_multiface_fireface(kind='both'):
         'Fireface',
         'Scarlett 2i4',
         'MADIface',
-        'Focusrite USB ASIO']
+        'Focusrite USB ASIO',
+        'ASIO4ALL v2']
 
     for valid_device in valid_devices:
         for identifier, device in enumerate(device_list):
@@ -36,7 +37,10 @@ def test_default_device_helper():
     scarlett = 'Scarlett 2i4' in sd.query_devices(identifier)['name']
     madiface = 'MADIface' in sd.query_devices(identifier)['name']
     focusrite = 'Focusrite USB ASIO' in sd.query_devices(identifier)['name']
-    assert fireface or multiface or scarlett or madiface or focusrite
+    realtek = 'ASIO4ALL v2' in \
+        sd.query_devices(identifier)['name']
+    assert fireface or multiface or scarlett or madiface or \
+           focusrite or realtek
 
     if fireface:
         assert device['max_input_channels'] == 18
@@ -54,6 +58,10 @@ def test_default_device_helper():
         assert device['max_input_channels'] == 2
         assert device['max_output_channels'] == 2
 
+    if realtek:
+        assert device['max_input_channels'] == 2
+        assert device['max_output_channels'] == 2
+
 # -----------------------------------------------------------------------------
 # Output Device Tests
 # -----------------------------------------------------------------------------
@@ -63,7 +71,7 @@ def test_default_device_helper():
                     reason="CI does not have a soundcard")
 def test_check_output_settings(empty_buffer_stub):
     identifier, config = default_device_multiface_fireface()
-    channels = [1]
+    channels = [0]
     block_size = 512
 
     buffer = empty_buffer_stub[0]
@@ -92,7 +100,6 @@ def test_check_output_settings(empty_buffer_stub):
         out_device.close()
 
 
-
 @pytest.mark.skipif(os.environ.get('CI') == 'true',
                     reason="CI does not have a soundcard")
 def test_sine_playback(sine_buffer_stub):
@@ -105,7 +112,7 @@ def test_sine_playback(sine_buffer_stub):
     out_device = devices.OutputAudioDevice(
         identifier=identifier,
         output_buffer=buffer,
-        channels=[0],
+        channels=[1],
         sampling_rate=sampling_rate)
     out_device.check_settings()
 
