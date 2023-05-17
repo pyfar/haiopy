@@ -13,8 +13,7 @@ def default_device_multiface_fireface(kind='both'):
         'Fireface',
         'Scarlett 2i4',
         'MADIface',
-        'Focusrite USB ASIO',
-        'ASIO4ALL v2']
+        'Focusrite USB ASIO']
 
     for valid_device in valid_devices:
         for identifier, device in enumerate(device_list):
@@ -37,10 +36,8 @@ def test_default_device_helper():
     scarlett = 'Scarlett 2i4' in sd.query_devices(identifier)['name']
     madiface = 'MADIface' in sd.query_devices(identifier)['name']
     focusrite = 'Focusrite USB ASIO' in sd.query_devices(identifier)['name']
-    realtek = 'ASIO4ALL v2' in \
-        sd.query_devices(identifier)['name']
-    assert fireface or multiface or scarlett or madiface or \
-           focusrite or realtek
+
+    assert fireface or multiface or scarlett or madiface or focusrite
 
     if fireface:
         assert device['max_input_channels'] == 18
@@ -55,10 +52,6 @@ def test_default_device_helper():
         assert device['max_output_channels'] == 198
 
     if focusrite:
-        assert device['max_input_channels'] == 2
-        assert device['max_output_channels'] == 2
-
-    if realtek:
         assert device['max_input_channels'] == 2
         assert device['max_output_channels'] == 2
 
@@ -120,6 +113,53 @@ def test_sine_playback(sine_buffer_stub):
     assert out_device.output_buffer.is_active is True
     out_device.wait()
     assert out_device.output_buffer.is_active is False
+
+    # Close Output Stream for next Tests
+    with pytest.raises(StopIteration, match="iteration stopped"):
+        out_device.close()
+
+
+@pytest.mark.skipif(os.environ.get('CI') == 'true',
+                    reason="CI does not have a soundcard")
+def test_check_init(empty_buffer_stub, sine_buffer_stub):
+    buffer = sine_buffer_stub[0]
+    identifier, config = default_device_multiface_fireface()
+
+    sampling_rate = config['default_samplerate']
+
+    out_device = devices.OutputAudioDevice(
+        identifier=identifier,
+        output_buffer=empty_buffer_stub[0],
+        channels=[1],
+        sampling_rate=sampling_rate)
+    out_device.check_settings()
+    assert out_device.output_buffer == empty_buffer_stub[0]
+    out_device.output_buffer = buffer
+    assert out_device._output_buffer == buffer
+    assert out_device.output_buffer == buffer
+
+    # set a buffer with non matching block size
+    buffer.block_size = 256
+    with pytest.raises(ValueError, match='block size does not match'):
+        out_device.output_buffer = buffer
+
+    # change the block size of the buffer and check if buffers block size is
+    # set accordingly
+    new_block_size = 256
+    out_device.block_size = new_block_size
+    assert out_device._block_size == new_block_size
+    assert out_device.output_buffer.block_size == new_block_size
+
+    # set and get sampling rate
+
+    out_device.sampling_rate = 44100  # Different Sampling Rates invalid
+    assert out_device._sampling_rate == 44100
+
+    # test if setters are blocked when the stream is in use
+    out_device.start()
+    with pytest.raises(ValueError, match='currently in use'):
+        out_device.block_size = 512
+    out_device.wait()
 
     # Close Output Stream for next Tests
     with pytest.raises(StopIteration, match="iteration stopped"):
