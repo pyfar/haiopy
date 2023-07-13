@@ -111,7 +111,9 @@ Pytest provides several, sophisticated functionalities which could reduce the ef
 
 Fixtures
 ~~~~~~~~
-"Software test fixtures initialize test functions. They provide a fixed baseline so that tests execute reliably and produce consistent, repeatable, results. Initialization may setup services, state, or other operating environments. These are accessed by test functions through arguments; for each fixture used by a test function there is typically a parameter (named after the fixture) in the test function’s definition." (from https://docs.pytest.org/en/stable/fixture.html)
+This section is not specific to haiopy, but oftentimes refers to features and examples implemented in the pyfar package which is one of the main dependencies of `imkar <https://https://github.com/pyfar/pyfar>`_.
+
+"Software test fixtures initialize test functions. They provide a fixed baseline so that tests execute reliably and produce consistent, repeatable, results. Initialization may setup services, state, or other operating environments. These are accessed by test functions through arguments; for each fixture used by a test function there is typically a parameter (named after the fixture) in the test function's definition." (from https://docs.pytest.org/en/stable/fixture.html)
 
 - All fixtures are implemented in *conftest.py*, which makes them automatically available to all tests. This prevents from implementing redundant, unreliable code in several test files.
 - Typical fixtures are haiopy objects with varying properties, stubs as well as functions need for initiliazing tests.
@@ -122,16 +124,17 @@ Have a look at already implemented fixtures in *confest.py*.
 **Dummies**
 
 If the objects used in the tests have arbitrary properties, tests are usually better to read, when these objects are initialized within the tests. If the initialization requires several operations or the object has non-arbitrary properties, this is a hint to use a fixture.
-Good examples illustrating these two cases are the initializations in *test_signal.py* vs. the sine and impulse signal fixtures in *conftest.py*.
+Good examples illustrating these two cases are the initializations in pyfar's *test_signal.py* vs. the sine and impulse signal fixtures in pyfar's *conftest.py*.
 
 **Stubs**
 
-Stubs mimic actual objects, but have minimum functionality and **fixed, well defined properties**. They are **only used in cases, when a dependence on the actual pyfar class is prohibited**. This is the case, when functionalities of the class itself or methods it depends on are tested. Examples are the tests of the Signal class and its methods in *test_signal.py* and *test_fft.py*.
+Stubs mimic actual objects, but have minimum functionality and **fixed, well defined properties**. They are **only used in cases, when a dependence on the actual class is prohibited**.
+This is the case, when functionalities of the class itself or methods it depends on are tested. Examples are the tests of the pyfar Signal class and its methods in *test_signal.py* and *test_fft.py*.
 
-It requires a little more effort to implement stubs of the pyfar classes. Therefore, stub utilities are provided in *pyfar/testing/stub_utils.py* and imported in *confest.py*, where the actual stubs are implemented.
+It requires a little more effort to implement stubs of classes. Therefore, stub utilities are provided in and imported in *confest.py*, where the actual stubs are implemented.
 
 - Note: the stub utilities are not meant to be imported to test files directly or used for other purposes than testing. They solely provide functionality to create fixtures.
-- The utilities simplify and harmonize testing within the pyfar package and improve the readability and reliability.
+- The utilities simplify and harmonize testing within package and improve the readability and reliability.
 - The implementation as the private submodule ``pyfar.testing.stub_utils``  further allows the use of similar stubs in related packages with pyfar dependency (e.g. other packages from the pyfar family).
 
 **Mocks**
@@ -140,13 +143,13 @@ Mocks are similar to stubs but used for **behavioral verification**. For example
 
 - A typical use case of mocks in the pyfar context is hardware communication, for example reading and writing of large files or audio in- and output. These use cases are rare compared to tests performing state verification.
 - In contrast to some other guidelines on mocks, external dependencies do **not** need to be mocked in general. Failing tests due to changes in external packages are meaningful hints to modify the code.
-- Examples of internal mocking can be found in *test_io.py*, indicated by the pytest ``@patch`` calls.
+- Examples of internal mocking can be found in pyfar's *test_io.py*, indicated by the pytest ``@patch`` calls.
 
 
 Writing the Documentation
 -------------------------
 
-Pyfar follows the `numpy style guide <https://numpydoc.readthedocs.io/en/latest/format.html>`_ for the docstring. A docstring has to consist at least of
+Pyfar packages follow the `numpy style guide <https://numpydoc.readthedocs.io/en/latest/format.html>`_ for the docstring. A docstring has to consist at least of
 
 - A short and/or extended summary,
 - the Parameters section, and
@@ -204,7 +207,6 @@ A reminder for the maintainers on how to deploy.
 - Commit all changes to develop
 - Update HISTORY.rst in develop
 - Check if new contributors should be added to AUTHORS.rst
-- Check if examples/pyfar_demo.ipynb needs to be updated
 - Merge develop into main
 
 Switch to main and run::
@@ -215,6 +217,3 @@ $ git push --follow-tags
 Travis will then deploy to PyPI if tests pass.
 
 - merge main back into develop
-- check `binder`_
-
-.. _binder: https://mybinder.org/v2/gh/pyfar/pyfar/main?filepath=examples%2Fpyfar_demo.ipynb
