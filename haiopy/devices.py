@@ -93,7 +93,8 @@ class AudioDevice(_Device):
 
     @sampling_rate.setter
     def sampling_rate(self, value):
-        self.check_settings(value, None, None)
+        self.check_settings(None, value, None, None)
+        self._samping_rate = value
 
     @property
     def block_size(self):
