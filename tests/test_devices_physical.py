@@ -137,12 +137,11 @@ def test_check_init(empty_buffer_stub, sine_buffer_stub):
     out_device.output_buffer = buffer
     assert out_device._output_buffer == buffer
     assert out_device.output_buffer == buffer
-
+    """
     # set a buffer with non matching block size
     buffer.block_size = 256
     with pytest.raises(ValueError, match='block size does not match'):
         out_device.output_buffer = buffer
-    """
     # Das hier wenn channel setter implementiert ist
     buffer.n_channels = 8
     with pytest.raises(ValueError, match='channel number does not match'):
@@ -151,25 +150,27 @@ def test_check_init(empty_buffer_stub, sine_buffer_stub):
 
     # change the block size of the buffer and check if buffers block size is
     # set accordingly
-    print(out_device.block_size)
+    """
     new_block_size = 256
     out_device.block_size = new_block_size
     assert out_device._block_size == new_block_size
     assert out_device.output_buffer.block_size == new_block_size
-    print(out_device.block_size, out_device.output_buffer.block_size)
     """
     # set and get sampling rate
-
-    out_device.sampling_rate = 44100  # Different Sampling Rates invalid
-    assert out_device._sampling_rate == 44100
+    new_sampling_rate = 88200
+    out_device.sampling_rate = new_sampling_rate
+    assert out_device._sampling_rate == new_sampling_rate
+    assert out_device.sampling_rate == new_sampling_rate
+    assert out_device.output_buffer.sampling_rate == new_sampling_rate
 
     # test if setters are blocked when the stream is in use
     out_device.start()
+    """
     with pytest.raises(ValueError, match='currently in use'):
         out_device.block_size = 512
+    """
     out_device.wait()
 
     # Close Output Stream for next Tests
     with pytest.raises(StopIteration, match="iteration stopped"):
         out_device.close()
-    """

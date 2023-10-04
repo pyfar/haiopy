@@ -101,10 +101,11 @@ class AudioDevice(_Device):
         """The block size of the audio buffer.
         """
         return self._block_size
-
+    """
     @block_size.setter
     def block_size(self, block_size):
         self._block_size = block_size
+    """
 
     @property
     def dtype(self):
@@ -164,7 +165,7 @@ class AudioDevice(_Device):
     @abstractmethod
     def _stop_buffer(self):
         raise NotImplementedError()
-    
+
     @abstractmethod
     def _close_stream(self):
         raise NotImplementedError()
@@ -365,12 +366,16 @@ class OutputAudioDevice(AudioDevice):
         return self._block_size
 
     @block_size.setter
-    def block_size(self, value):
+    def block_size(self, block_size):
         if self.stream.active is True or self.output_buffer.is_active is True:
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
-        self.output_buffer.block_size = value
-        super(OutputAudioDevice, self.__class__).block_size.fset(self, value)
+        self._close_stream()
+        # self.output_buffer._set_block_size(block_size)
+        self._block_size = block_size
+        self.output_buffer.block_size = block_size
+        self.initialize()
+        # super(OutputAudioDevice, self.__class__).block_size.fset(self, value)
 
     @property
     def sampling_rate(self):
@@ -378,9 +383,13 @@ class OutputAudioDevice(AudioDevice):
 
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
+        if self.stream.active is True or self.output_buffer.is_active is True:
+            raise ValueError(
+                "The device is currently in use and needs to be closed first")
         self.check_settings(sampling_rate=sampling_rate)
         self._close_stream()
         self._sampling_rate = sampling_rate
+        self.output_buffer.sampling_rate = sampling_rate
         self.initialize()
 
     def _stop_buffer(self):
