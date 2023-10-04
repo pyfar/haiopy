@@ -41,7 +41,7 @@ class _Device(object):
         return self._block_size
 
     def dtype(self):
-        return self.dtype
+        return self._dtype
 
 
 class AudioDevice(_Device):
@@ -331,7 +331,7 @@ class OutputAudioDevice(AudioDevice):
             self.block_size,
             self.id,
             self._n_channels_stream,
-            self.dtype,
+            self._dtype,
             callback=self.output_callback,
             finished_callback=self._finished_callback)
         self._stream = ostream
@@ -373,14 +373,16 @@ class OutputAudioDevice(AudioDevice):
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
         self._close_stream()
-        self._identifier = identifier
-        self._id = sd.query_devices(identifier)['name']
         max_channel = np.max(self._output_channels)
         n_channels = len(self._output_channels)
-        self.check_settings(n_channels=np.max([n_channels, max_channel+1]),
-                            sampling_rate=self._sampling_rate,
-                            dtype=self._dtype,
-                            extra_settings=self._extra_settings)
+        sd.check_output_settings(
+            device=sd.query_devices(identifier)['name'],
+            channels=np.max([n_channels, max_channel+1]),
+            dtype=self._dtype,
+            extra_settings=self._extra_settings,
+            samplerate=self._sampling_rate)
+        self._identifier = identifier
+        self._id = sd.query_devices(identifier)['name']
         self.initialize()
 
     @property
@@ -412,6 +414,36 @@ class OutputAudioDevice(AudioDevice):
         self._close_stream()
         self._sampling_rate = sampling_rate
         self.output_buffer.sampling_rate = sampling_rate
+        self.initialize()
+
+    @property
+    def channels(self):
+        return self._output_channels
+
+    @channels.setter
+    def channels(self, channels):
+        if self.stream.active is True or self.output_buffer.is_active is True:
+            raise ValueError(
+                "The device is currently in use and needs to be closed first")
+        self._close_stream()
+        max_channel = np.max(channels)
+        n_channels = len(channels)
+        self.check_settings(n_channels=np.max([n_channels, max_channel+1]))
+        self._output_channels = channels
+        self.initialize()
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @dtype.setter
+    def dtype(self, dtype):
+        if self.stream.active is True or self.output_buffer.is_active is True:
+            raise ValueError(
+                "The device is currently in use and needs to be closed first")
+        self._close_stream()
+        self.check_settings(dtype=dtype)
+        self._dtype = dtype
         self.initialize()
 
     def _stop_buffer(self):
