@@ -2,6 +2,7 @@ import numpy as np
 import pyfar as pf
 from abc import abstractmethod
 from threading import Event
+import warnings
 
 
 class _Buffer(object):
@@ -188,6 +189,15 @@ class SignalBuffer(_Buffer):
         """The sampling rate of the underlying data."""
         return self.data.sampling_rate
 
+    @sampling_rate.setter
+    def sampling_rate(self, sampling_rate):
+        """Set new sampling_rate and resample the input Signal"""
+        self.check_if_active()
+        self._data = pf.dsp.resample(self._data, sampling_rate)
+        warnings.warn("Resampling the input Signal to sampling_rate="
+                      f"{sampling_rate} might generate artifacts.")
+        self._update_data()
+
     @property
     def n_blocks(self):
         """The number of blocks contained in the buffer."""
@@ -225,6 +235,7 @@ class SignalBuffer(_Buffer):
         self._strided_data = np.lib.stride_tricks.as_strided(
             self.data.time,
             (*self.data.cshape, self.n_blocks, self.block_size))
+        self._index = 0
 
     def next(self):
         """Return the next audio block as numpy array and increment the block
