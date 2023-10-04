@@ -90,10 +90,11 @@ class AudioDevice(_Device):
         """The sampling rate of the audio device.
         """
         return self._sampling_rate
-
+    """
     @sampling_rate.setter
     def sampling_rate(self, value):
-        self.check_settings(value, None, None)
+        self.check_settings(None, value, None, None)
+    """
 
     @property
     def block_size(self):
@@ -162,6 +163,10 @@ class AudioDevice(_Device):
 
     @abstractmethod
     def _stop_buffer(self):
+        raise NotImplementedError()
+    
+    @abstractmethod
+    def _close_stream(self):
         raise NotImplementedError()
 
     @abstractmethod
@@ -367,8 +372,24 @@ class OutputAudioDevice(AudioDevice):
         self.output_buffer.block_size = value
         super(OutputAudioDevice, self.__class__).block_size.fset(self, value)
 
+    @property
+    def sampling_rate(self):
+        return self._sampling_rate
+
+    @sampling_rate.setter
+    def sampling_rate(self, sampling_rate):
+        self.check_settings(sampling_rate=sampling_rate)
+        self._close_stream()
+        self._sampling_rate = sampling_rate
+        self.initialize()
+
     def _stop_buffer(self):
         self._output_buffer._stop()
+
+    def _close_stream(self):
+        if self.stream is not None:
+            self.stream.close()
+            self._output_buffer._stop(msg=None)
 
     def start(self):
         self.output_buffer._start()
