@@ -201,7 +201,9 @@ class OutputAudioDevice(AudioDevice):
             dtype=dtype,
             extra_settings=extra_settings,
             samplerate=sampling_rate)
+        self._extra_settings = extra_settings
 
+        self._identifier = identifier
         super().__init__(
             identifier=identifier,
             sampling_rate=sampling_rate,
@@ -360,6 +362,26 @@ class OutputAudioDevice(AudioDevice):
                 f"mapping. Currently used channels are {self.output_channels}")
 
         self._output_buffer = buffer
+
+    @property
+    def identifier(self):
+        return self._identifier
+
+    @identifier.setter
+    def identifier(self, identifier):
+        if self.stream.active is True or self.output_buffer.is_active is True:
+            raise ValueError(
+                "The device is currently in use and needs to be closed first")
+        self._close_stream()
+        self._identifier = identifier
+        self._id = sd.query_devices(identifier)['name']
+        max_channel = np.max(self._output_channels)
+        n_channels = len(self._output_channels)
+        self.check_settings(n_channels=np.max([n_channels, max_channel+1]),
+                            sampling_rate=self._sampling_rate,
+                            dtype=self._dtype,
+                            extra_settings=self._extra_settings)
+        self.initialize()
 
     @property
     def block_size(self):
