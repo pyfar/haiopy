@@ -251,7 +251,8 @@ class SignalBuffer(_Buffer):
 
 
 class NoiseGenerator(_Buffer):
-    """Generator to block wise generate a Noise.
+    """Generator for block wise noise generation.
+    Supports white and pink noise spectra.
 
     Examples
     --------
@@ -271,7 +272,7 @@ class NoiseGenerator(_Buffer):
                  rms=1,
                  sampling_rate=44100,
                  seed=None) -> None:
-        """Initialize a `NoiseGenerator` with given block_size, spectrum,
+        """Initialize a `NoiseGenerator` with given block size, spectrum,
         rms, sampling_rate and seed.
 
         The filter coefficients for generating the pink noise are presented in
@@ -284,7 +285,7 @@ class NoiseGenerator(_Buffer):
         spectrum: str, optional
             ``white`` to generate noise with constant energy across frequency.
             ``pink`` to generate noise with constant energy across filters with
-            constant relative bandwith. The default is ``"white"``.
+            constant relative bandwidth. The default is ``"white"``.
         rms : double, optional
             The route mean square (RMS) value of the noise signal.
             The default is ``1``.
@@ -365,7 +366,7 @@ class NoiseGenerator(_Buffer):
         super()._set_block_size(block_size)
 
     def next(self):
-        """Return the next audio block as numpy array, and calcultes data
+        """Return the next audio block as numpy array, and calculates data
         with seed_idx if seed is True.
         """
         data = self._rng.standard_normal(self._block_size)
