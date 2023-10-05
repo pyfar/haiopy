@@ -2,6 +2,7 @@ import numpy as np
 import pyfar as pf
 from abc import abstractmethod
 from threading import Event
+import warnings
 
 
 class _Buffer(object):
@@ -31,6 +32,7 @@ class _Buffer(object):
 
     def _set_block_size(self, block_size):
         """Private block size setter implementing validity checks."""
+        self.check_if_active()
         self._check_block_size(block_size)
         self._block_size = block_size
 
@@ -69,11 +71,20 @@ class _Buffer(object):
         `True` if the buffer is active, `False` if inactive."""
         return self._is_active.is_set()
 
+    @property
+    def is_finished(self):
+        """Return if the buffer has finished iteration.
+        `True` if the buffer is finished, `False` if not.
+        """
+        return self._is_finished.is_set()
+
     def check_if_active(self):
-        """Check if the buffer is active.
+        """Check if the buffer is active and raise an exception if so.
         If the buffer is active a BufferError exception is raised. In case the
         buffer is currently inactive, the method simply passes without any
-        return value.
+        return value. This method should always be called before attempting to
+        modify properties of the buffer to prevent undefined behavior during
+        iteration of the buffer.
 
         Raises
         ------
@@ -175,6 +186,15 @@ class SignalBuffer(_Buffer):
         """The sampling rate of the underlying data."""
         return self.data.sampling_rate
 
+    @sampling_rate.setter
+    def sampling_rate(self, sampling_rate):
+        """Set new sampling_rate and resample the input Signal"""
+        self.check_if_active()
+        self._data = pf.dsp.resample(self._data, sampling_rate)
+        warnings.warn("Resampling the input Signal to sampling_rate="
+                      f"{sampling_rate} might generate artifacts.")
+        self._update_data()
+
     @property
     def n_blocks(self):
         """The number of blocks contained in the buffer."""
@@ -199,7 +219,6 @@ class SignalBuffer(_Buffer):
         self._update_data()
 
     def _set_block_size(self, block_size):
-        self.check_if_active()
         super()._set_block_size(block_size)
         self._update_data()
 
@@ -213,6 +232,7 @@ class SignalBuffer(_Buffer):
         self._strided_data = np.lib.stride_tricks.as_strided(
             self.data.time,
             (*self.data.cshape, self.n_blocks, self.block_size))
+        self._index = 0
 
     def next(self):
         """Return the next audio block as numpy array and increment the block

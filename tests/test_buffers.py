@@ -120,6 +120,7 @@ def test_signal_buffer():
 
     # check if state is set to inactive after loop finished
     assert buffer.is_active is False
+    assert buffer.is_finished is True
 
 
 def test_signal_buffer_padding():
@@ -306,3 +307,20 @@ def test_SineGenerator_updates():
         sine.amplitude = 3
     with pytest.raises(BufferError, match="needs to be inactive"):
         sine.sampling_rate = 24000
+
+
+def test_sampling_rate_setter():
+    # Test setting the sampling rate, resampling the Signal and updating data
+    block_size = 512
+    sampling_rate = 44100
+    sine = pf.signals.sine(440, 4*block_size, sampling_rate=sampling_rate)
+    buffer = SignalBuffer(block_size, sine)
+    assert buffer.sampling_rate == 44100
+
+    new_sampling_rate = sampling_rate*2
+    with pytest.warns(UserWarning, match="Resampling the input Signal"):
+        buffer.sampling_rate = new_sampling_rate
+    resampled_sig = pf.dsp.resample(sine, new_sampling_rate)
+    assert buffer.sampling_rate == 88200
+    assert buffer.n_blocks == 8
+    assert buffer.data == resampled_sig
