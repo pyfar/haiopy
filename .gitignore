@@ -104,3 +104,4 @@ ENV/
 # IDE settings
 .vscode/
 tests/private/Haiopy_test.py
+private/Haiopy_whatever.py
