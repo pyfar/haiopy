@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.testing as npt
-from haiopy.buffers import _Buffer, SignalBuffer, NoiseGenerator
+from haiopy.buffers import _Buffer, SignalBuffer
+from haiopy.buffers import SineGenerator, NoiseGenerator
 import pytest
 import pyfar as pf
 from scipy import signal
@@ -209,6 +210,105 @@ def test_signal_buffer_updates():
 
     with pytest.raises(BufferError, match="needs to be inactive"):
         buffer.data
+
+
+def test_SineGenerator():
+    frequency = 440
+    block_size = 512
+    amplitude = 1
+    sampling_rate = 44100
+
+    sine = SineGenerator(frequency,
+                         block_size,
+                         amplitude,
+                         sampling_rate)
+
+    # test getters
+    assert sine.frequency == frequency
+    assert sine.amplitude == amplitude
+    assert sine.sampling_rate == sampling_rate
+    assert sine.phase == 0
+
+    # check if sine generator is not active yet
+    assert sine.is_active is False
+
+    # check first step
+    omega = 2 * np.pi * frequency
+    phase = 0
+    sine_data = amplitude * np.sin(
+            omega*np.arange(block_size)/sampling_rate+phase)
+    block_data = next(sine)
+    npt.assert_array_equal(block_data, sine_data)
+
+    # check second step
+    phase = omega * (block_size/sampling_rate)
+    assert sine.phase == phase
+    sine_data = amplitude * np.sin(
+            omega*np.arange(block_size)/sampling_rate+phase)
+    block_data = next(sine)
+    npt.assert_array_equal(block_data, sine_data)
+
+    # check if sine generator is active now
+    assert sine.is_active is True
+
+
+def test_SineGenerator_updates():
+    frequency = 440
+    block_size = 512
+    amplitude = 1
+    sampling_rate = 44100
+
+    sine = SineGenerator(frequency,
+                         block_size,
+                         amplitude,
+                         sampling_rate)
+
+    # Update Parameters
+    new_frequency = 500
+    sine.frequency = new_frequency
+    assert sine.frequency == new_frequency
+
+    new_block_size = 128
+    sine.block_size = new_block_size
+    assert sine.block_size == new_block_size
+
+    new_amplitude = 2
+    sine.amplitude = new_amplitude
+    assert sine.amplitude == new_amplitude
+
+    new_sampling_rate = 48000
+    sine.sampling_rate = new_sampling_rate
+    assert sine.sampling_rate == new_sampling_rate
+
+    # check updated date
+    updated_block_data = next(sine)
+    omega = 2 * np.pi * new_frequency
+    phase = 0
+    sine_data = new_amplitude * np.sin(
+            omega*np.arange(new_block_size)/new_sampling_rate+phase)
+    npt.assert_array_equal(updated_block_data, sine_data)
+
+    # Test setting phase to 0 when updating parameters
+    assert sine.phase == omega*(new_block_size / new_sampling_rate)
+    # we need to stop the SineGenerator which raises a StopIteration error
+    with pytest.raises(StopIteration):
+        sine._stop()
+    sine.frequency = 1000
+    assert sine.phase == 0
+
+    # Check if Errors are raised when SineGenerator is in use
+    next(sine)
+    assert sine.is_active is True
+
+    # Setting the Parameters is not allowed if the SineGenerator is active
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        sine.frequency = 400
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        sine.block_size = 256
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        sine.amplitude = 3
+    with pytest.raises(BufferError, match="needs to be inactive"):
+        sine.sampling_rate = 24000
 
 
 def test_NoiseGenerator():
