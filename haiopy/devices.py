@@ -326,6 +326,12 @@ class OutputAudioDevice(AudioDevice):
 
     def initialize(self):
         """Initialize the playback stream for a given number of channels."""
+        # Init array buffering a block of all required output channels
+        # including zeros for unused channels. Required as sounddevice does
+        # not support routing matrices
+        self._stream_block_out = np.zeros(
+            (self._n_channels_stream, self.block_size), dtype=self.dtype)
+
         ostream = sd.OutputStream(
             self.sampling_rate,
             self.block_size,
@@ -335,11 +341,6 @@ class OutputAudioDevice(AudioDevice):
             callback=self.output_callback,
             finished_callback=self._finished_callback)
         self._stream = ostream
-        # Init array buffering a block of all required output channels
-        # including zeros for unused channels. Required as sounddevice does
-        # not support routing matrices
-        self._stream_block_out = np.zeros(
-            (self._n_channels_stream, self.block_size), dtype=self.dtype)
 
     def initialize_buffer(self):
         self.output_buffer._start()
@@ -381,7 +382,7 @@ class OutputAudioDevice(AudioDevice):
             dtype=self._dtype,
             extra_settings=self._extra_settings,
             samplerate=self._sampling_rate)
-        self._identifier = identifier
+        # self._identifier = identifier
         self._id = sd.query_devices(identifier)['name']
         self.initialize()
 
