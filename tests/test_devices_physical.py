@@ -68,13 +68,17 @@ def test_check_output_settings(empty_buffer_stub):
     block_size = 512
 
     buffer = empty_buffer_stub[0]
+    sampling_rate = config['default_samplerate']
 
-    out_device = devices.OutputAudioDevice(
-        identifier, 44100, block_size, channels=channels, dtype='float32',
-        output_buffer=buffer)
+    out_device = devices.OutputAudioDevice(identifier=identifier, 
+                                           sampling_rate=sampling_rate,
+                                           block_size=block_size,
+                                           channels=channels,
+                                           dtype='float32',
+                                           output_buffer=buffer)
 
     # Check sampling rate
-    out_device.check_settings(sampling_rate=config['default_samplerate'])
+    out_device.check_settings(sampling_rate=sampling_rate)
     with pytest.raises(sd.PortAudioError, match="Invalid"):
         out_device.check_settings(sampling_rate=10)
 
@@ -137,38 +141,36 @@ def test_check_init(empty_buffer_stub, sine_buffer_stub):
     out_device.output_buffer = buffer
     assert out_device._output_buffer == buffer
     assert out_device.output_buffer == buffer
-    """
-    # set a buffer with non matching block size
-    buffer.block_size = 256
-    with pytest.raises(ValueError, match='block size does not match'):
-        out_device.output_buffer = buffer
-    # Das hier wenn channel setter implementiert ist
-    buffer.n_channels = 8
-    with pytest.raises(ValueError, match='channel number does not match'):
-        out_device.output_buffer = buffer
-    """
+    # test playback with new buffer
+    out_device.start()
+    out_device.wait()
 
-    # change the block size of the buffer and check if buffers block size is
-    # set accordingly
-    """
-    new_block_size = 256
+    # set new block_size
+    new_block_size = 1024
     out_device.block_size = new_block_size
     assert out_device._block_size == new_block_size
     assert out_device.output_buffer.block_size == new_block_size
-    """
-    # set and get sampling rate
-    new_sampling_rate = 88200
+    # test playback with new block_size
+    out_device.start()
+    out_device.wait()
+
+    # set new sampling_rate
+    new_sampling_rate = 88200 if sampling_rate == 44100 else 44100
     out_device.sampling_rate = new_sampling_rate
     assert out_device._sampling_rate == new_sampling_rate
     assert out_device.sampling_rate == new_sampling_rate
     assert out_device.output_buffer.sampling_rate == new_sampling_rate
-
-    # test if setters are blocked when the stream is in use
+    # test playback with new sampling_rate
     out_device.start()
-    """
-    with pytest.raises(ValueError, match='currently in use'):
-        out_device.block_size = 512
-    """
+    out_device.wait()
+
+    # set new channels
+    new_channels = [0, 1]
+    out_device.channels = new_channels
+    out_device._output_buffer.reset_index()
+    assert out_device.channels == new_channels
+    # test playback with new channels
+    out_device.start()
     out_device.wait()
 
     # Close Output Stream for next Tests

@@ -155,6 +155,7 @@ class SignalBuffer(_Buffer):
             raise ValueError("signal must be a pyfar.Signal object.")
         if signal.time.ndim > 2:
             raise ValueError("Only one-dimensional arrays are allowed")
+        self._n_samples = signal.n_samples
         self._data = self._pad_data(signal)
         self._update_data()
         self._index = 0
@@ -172,9 +173,10 @@ class SignalBuffer(_Buffer):
         pyfar.Signal
             Zero-padded signal.
         """
-        n_samples = data.n_samples
-        if np.mod(n_samples, self._block_size) > 0:
-            pad_samples = self.block_size - np.mod(n_samples, self.block_size)
+        # n_samples = data.n_samples
+        if np.mod(self._n_samples, self._block_size) > 0:
+            pad_samples = self.block_size - np.mod(self._n_samples,
+                                                   self.block_size)
             return pf.dsp.pad_zeros(data, pad_samples, mode='after')
         else:
             return data
@@ -192,11 +194,10 @@ class SignalBuffer(_Buffer):
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
         """Set new sampling_rate and resample the input Signal"""
-        self.check_if_active()
-        self._data = pf.dsp.resample(self._data, sampling_rate)
+        self.data = pf.dsp.resample(self._data[:self._n_samples],
+                                    sampling_rate)
         warnings.warn("Resampling the input Signal to sampling_rate="
                       f"{sampling_rate} might generate artifacts.")
-        self._update_data()
 
     @property
     def n_blocks(self):
@@ -218,12 +219,13 @@ class SignalBuffer(_Buffer):
     def data(self, data):
         """Set the underlying signal if the buffer is not active."""
         self.check_if_active()
+        self._n_samples = data.n_samples
         self._data = self._pad_data(data)
         self._update_data()
 
     def _set_block_size(self, block_size):
         super()._set_block_size(block_size)
-        self._update_data()
+        self.data = self._data[:self._n_samples]
 
     def _update_data(self):
         """Update the data block strided of the underlying data.
@@ -246,6 +248,11 @@ class SignalBuffer(_Buffer):
             self._index += 1
             return self._strided_data[..., current, :]
         self._stop("The buffer is empty.")
+
+    def reset_index(self):
+        self._is_active.clear()
+        self._is_finished.set()
+        self._index = 0
 
     def _reset(self):
         self._index = 0
