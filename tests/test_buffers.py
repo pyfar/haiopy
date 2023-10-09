@@ -439,3 +439,16 @@ def test_sampling_rate_setter():
     assert buffer.sampling_rate == 88200
     assert buffer.n_blocks == 8
     assert buffer.data == resampled_sig
+
+
+def test_reset_index():
+    # Test reset_index method
+    block_size = 512
+    sampling_rate = 44100
+    sine = pf.signals.sine(440, 4*block_size, sampling_rate=sampling_rate)
+    buffer = SignalBuffer(block_size, sine)
+    [next(buffer), next(buffer), next(buffer)]
+    assert buffer.index == 3
+    # reset_index() is not supposed to raise StopIteration
+    buffer.reset_index()
+    assert buffer.index == 0

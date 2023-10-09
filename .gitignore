@@ -107,4 +107,4 @@ ENV/
 # workaround for failing test discovery in vscode
 tests/private/
 tests/private/Haiopy_test.py
-private/Haiopy_whatever.py
+private
