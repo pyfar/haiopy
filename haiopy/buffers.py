@@ -191,7 +191,8 @@ class SignalBuffer(_Buffer):
 
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
-        """Set new sampling_rate and resample the input Signal"""
+        """Set new sampling_rate and resample the input Signal without
+        the padded zeros."""
         signal = pf.Signal(data=self._data.time[..., :self._n_samples],
                            sampling_rate=self.sampling_rate,
                            n_samples=self._n_samples,
@@ -228,8 +229,11 @@ class SignalBuffer(_Buffer):
         self._update_data()
 
     def _set_block_size(self, block_size):
+        """Set block_size and data without the padded zeros,
+        data setter will pad the data for the new blocksize."""
         super()._set_block_size(block_size)
         self._data.time = self._data.time[..., :self._n_samples]
+        # Use data setter to pad the data and update the strides
         self.data = self._data
 
     def _update_data(self):
@@ -255,6 +259,7 @@ class SignalBuffer(_Buffer):
         self._stop("The buffer is empty.")
 
     def reset_index(self):
+        """Resets the index and the block-wise view of the underlying data"""
         self._is_active.clear()
         self._is_finished.set()
         self._index = 0
