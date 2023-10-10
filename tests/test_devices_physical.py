@@ -70,7 +70,7 @@ def test_check_output_settings(empty_buffer_stub):
     buffer = empty_buffer_stub[0]
     sampling_rate = config['default_samplerate']
 
-    out_device = devices.OutputAudioDevice(identifier=identifier, 
+    out_device = devices.OutputAudioDevice(identifier=identifier,
                                            sampling_rate=sampling_rate,
                                            block_size=block_size,
                                            channels=channels,

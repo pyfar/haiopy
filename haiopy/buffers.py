@@ -194,8 +194,9 @@ class SignalBuffer(_Buffer):
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
         """Set new sampling_rate and resample the input Signal"""
-        self.data = pf.dsp.resample(self._data[:self._n_samples],
-                                    sampling_rate)
+        signal = pf.Signal(self._data.time[..., :self._n_samples],
+                           self.sampling_rate)
+        self.data = pf.dsp.resample(signal, sampling_rate)
         warnings.warn("Resampling the input Signal to sampling_rate="
                       f"{sampling_rate} might generate artifacts.")
 
@@ -225,7 +226,8 @@ class SignalBuffer(_Buffer):
 
     def _set_block_size(self, block_size):
         super()._set_block_size(block_size)
-        self.data = self._data[:self._n_samples]
+        self._data.time = self._data.time[..., :self._n_samples]
+        self.data = self._data
 
     def _update_data(self):
         """Update the data block strided of the underlying data.
