@@ -194,8 +194,13 @@ class SignalBuffer(_Buffer):
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
         """Set new sampling_rate and resample the input Signal"""
-        signal = pf.Signal(self._data.time[..., :self._n_samples],
-                           self.sampling_rate)
+        signal = pf.Signal(data=self._data.time[..., :self._n_samples],
+                           sampling_rate=self.sampling_rate,
+                           n_samples=self._n_samples,
+                           domain=self._data.domain,
+                           fft_norm=self._data._fft_norm,
+                           comment=self._data.comment
+                           )
         self.data = pf.dsp.resample(signal, sampling_rate)
         warnings.warn("Resampling the input Signal to sampling_rate="
                       f"{sampling_rate} might generate artifacts.")
