@@ -352,6 +352,7 @@ class OutputAudioDevice(AudioDevice):
 
     @output_buffer.setter
     def output_buffer(self, buffer):
+        """Sets the output buffer"""
         if buffer.block_size != self.block_size:
             raise ValueError(
                 "The buffer's block size does not match. ",
@@ -382,7 +383,6 @@ class OutputAudioDevice(AudioDevice):
             dtype=self._dtype,
             extra_settings=self._extra_settings,
             samplerate=self._sampling_rate)
-        # self._identifier = identifier
         self._id = sd.query_devices(identifier)['name']
         self.initialize()
 
@@ -392,15 +392,16 @@ class OutputAudioDevice(AudioDevice):
 
     @block_size.setter
     def block_size(self, block_size):
+        """Sets the blocksize of the OutputDevice and the output buffer.
+        Therefore, the current stream is closed and a new stream with setted
+        blocksize and output buffer is initialized."""
         if self.stream.active is True or self.output_buffer.is_active is True:
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
         self._close_stream()
-        # self.output_buffer._set_block_size(block_size)
         self._block_size = block_size
         self.output_buffer.block_size = block_size
         self.initialize()
-        # super(OutputAudioDevice, self.__class__).block_size.fset(self, value)
 
     @property
     def sampling_rate(self):
@@ -408,6 +409,9 @@ class OutputAudioDevice(AudioDevice):
 
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
+        """Sets the sampling rate of the OutputDevice and the output buffer.
+        Therefore, the current stream is closed and a new stream with setted
+        samplingrate and output buffer is initialized."""
         if self.stream.active is True or self.output_buffer.is_active is True:
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
@@ -423,6 +427,9 @@ class OutputAudioDevice(AudioDevice):
 
     @channels.setter
     def channels(self, channels):
+        """Sets the channels of the Output device. Therefore, the current
+        stream is closed and a new stream with setted channels is
+        initialized."""
         if self.stream.active is True or self.output_buffer.is_active is True:
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
@@ -439,6 +446,8 @@ class OutputAudioDevice(AudioDevice):
 
     @dtype.setter
     def dtype(self, dtype):
+        """Sets the dtype of the output buffer. Therefore, the current stream
+        is closed and a new stream with setted dtype is initialized."""
         if self.stream.active is True or self.output_buffer.is_active is True:
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
