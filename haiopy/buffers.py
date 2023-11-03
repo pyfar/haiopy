@@ -100,7 +100,10 @@ class _Buffer(object):
         """Stop buffer iteration and set the state to inactive."""
         self._is_active.clear()
         self._is_finished.set()
-        raise StopIteration(msg)
+        if msg is None:
+            pass
+        else:
+            raise StopIteration(msg)
 
     def _start(self):
         """Set the state to active.
