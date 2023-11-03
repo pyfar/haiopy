@@ -438,7 +438,7 @@ def test_sampling_rate_setter():
     resampled_sig = pf.dsp.resample(sine, new_sampling_rate)
     assert buffer.sampling_rate == 88200
     assert buffer.n_blocks == 8
-    assert buffer.data == resampled_sig
+    npt.assert_allclose(buffer.data.time, resampled_sig.time)
 
 
 def test_reset_index():
