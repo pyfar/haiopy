@@ -171,13 +171,11 @@ class SignalBuffer(_Buffer):
         pyfar.Signal
             Zero-padded signal.
         """
-        # n_samples = data.n_samples
-        if np.mod(self._n_samples, self._block_size) > 0:
-            pad_samples = self.block_size - np.mod(self._n_samples,
-                                                   self.block_size)
-            return pf.dsp.pad_zeros(data, pad_samples, mode='after')
-        else:
+        if np.mod(self._n_samples, self._block_size) <= 0:
             return data
+        pad_samples = self.block_size - np.mod(
+            self._n_samples, self.block_size)
+        return pf.dsp.pad_zeros(data, pad_samples, mode='after')
 
     @property
     def n_channels(self):
@@ -198,8 +196,7 @@ class SignalBuffer(_Buffer):
                            n_samples=self._n_samples,
                            domain=self._data.domain,
                            fft_norm=self._data._fft_norm,
-                           comment=self._data.comment
-                           )
+                           comment=self._data.comment)
         self.data = pf.dsp.resample(signal, sampling_rate)
         warnings.warn("Resampling the input Signal to sampling_rate="
                       f"{sampling_rate} might generate artifacts.")
