@@ -28,7 +28,7 @@ class _Buffer(object):
 
     def _check_block_size(self, block_size):
         """Check if the block size is an integer."""
-        if type(block_size) != int:
+        if not isinstance(block_size, int):
             raise ValueError("The block size needs to be an integer")
 
     def _set_block_size(self, block_size):
