@@ -53,6 +53,12 @@ class _Buffer(object):
         """Return sampling rate."""
         pass
 
+    @property
+    @abstractmethod
+    def n_channels(self):
+        """Return number of channels."""
+        raise NotImplementedError()
+
     def __iter__(self):
         return self
 
@@ -346,6 +352,11 @@ class SineGenerator(_Buffer):
         self._phase = 0
 
     @property
+    def n_channels(self):
+        """Return the number of channels. This is currently always 1."""
+        return 1
+
+    @property
     def phase(self):
         """Return the current phase of the sinewave"""
         return self._phase
@@ -432,6 +443,11 @@ class NoiseGenerator(_Buffer):
     def sampling_rate(self, sampling_rate):
         self.check_if_active()
         self._sampling_rate = sampling_rate
+
+    @property
+    def n_channels(self):
+        """Return the number of channels. This is currently always 1."""
+        return 1
 
     @property
     def spectrum(self):

@@ -13,4 +13,4 @@ numpy
 sounddevice
 pyfar
 autodocsumm
-insipid-sphinx-theme
+pydata-sphinx-theme
