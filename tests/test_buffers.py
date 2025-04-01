@@ -229,6 +229,8 @@ def test_SineGenerator():
     assert sine.sampling_rate == sampling_rate
     assert sine.phase == 0
 
+    assert sine.n_channels == 1
+
     # check if sine generator is not active yet
     assert sine.is_active is False
 
@@ -326,6 +328,8 @@ def test_NoiseGenerator():
     assert noise.rms == 1
     assert noise.sampling_rate == 44100
     assert noise.seed == 10
+
+    assert noise.n_channels == 1
 
     # check if noise generator is not active yet
     assert noise.is_active is False
