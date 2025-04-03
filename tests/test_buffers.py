@@ -1,7 +1,11 @@
 import numpy as np
 import numpy.testing as npt
 from unittest.mock import patch
-from haiopy.buffers import _Buffer, SignalBuffer
+from haiopy.buffers import (
+    _Buffer,
+    SignalBuffer,
+    EmptyBuffer
+)
 from haiopy.buffers import SineGenerator, NoiseGenerator
 import pytest
 import pyfar as pf
@@ -459,3 +463,31 @@ def test_reset_index():
     # reset_index() is not supposed to raise StopIteration
     buffer.reset_index()
     assert buffer.index == 0
+
+
+def test_EmptyBuffer():
+    block_size = 512
+    sampling_rate = 44100
+    n_channels = 1
+
+    buffer = EmptyBuffer(
+        block_size=block_size,
+        sampling_rate=sampling_rate,
+        n_channels=n_channels,
+    )
+
+    # Calling next should raise a StopIteration error stating that this is
+    # an empty buffer
+    with pytest.warns(UserWarning, match="Please provide a valid buffer"):
+        with pytest.raises(StopIteration, match="This is an empty buffer"):
+            buffer.next()
+
+    # Calling next should raise a StopIteration error stating that this is
+    # an empty buffer
+    with pytest.warns(UserWarning, match="Please provide a valid buffer"):
+        with pytest.raises(StopIteration, match="This is an empty buffer"):
+            next(buffer)
+
+    assert buffer.block_size == block_size
+    assert buffer.sampling_rate == sampling_rate
+    assert buffer.n_channels == n_channels
