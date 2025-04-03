@@ -138,6 +138,9 @@ class AudioDevice(_Device):
         """
         return self._stream
 
+    def _stream_active(self):
+        return self.stream.active if self.stream is not None else False
+
     def finished_callback(self) -> None:
         """Custom callback after a audio stream has finished."""
         print("I'm finished.")
