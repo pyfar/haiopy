@@ -82,7 +82,6 @@ class AudioDevice(_Device):
             dtype=dtype
         )
         self._id = identifier
-        # self._extra_settings = extra_settings
 
         self._callback = None
         self._stream = None
@@ -106,33 +105,6 @@ class AudioDevice(_Device):
         return self._name
 
     @property
-    def sampling_rate(self):
-        """The sampling rate of the audio device.
-        """
-        return self._sampling_rate
-    """
-    @sampling_rate.setter
-    def sampling_rate(self, value):
-        self.check_settings(None, value, None, None)
-    """
-
-    @property
-    def block_size(self):
-        """The block size of the audio buffer.
-        """
-        return self._block_size
-    """
-    @block_size.setter
-    def block_size(self, block_size):
-        self._block_size = block_size
-    """
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    @abstractmethod
     def stream(self):
         """The sounddevice audio stream.
         """
@@ -191,10 +163,6 @@ class AudioDevice(_Device):
 
     @abstractmethod
     def _close_stream(self):
-        raise NotImplementedError()
-
-    @abstractmethod
-    def _reset_buffer(self):
         raise NotImplementedError()
 
 
