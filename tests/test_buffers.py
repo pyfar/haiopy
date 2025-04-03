@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.testing as npt
+from unittest.mock import patch
 from haiopy.buffers import _Buffer, SignalBuffer
 from haiopy.buffers import SineGenerator, NoiseGenerator
 import pytest
@@ -7,6 +8,7 @@ import pyfar as pf
 from scipy import signal
 
 
+@patch.multiple(_Buffer, __abstractmethods__=set())
 def test_buffer_block_size():
 
     block_size = 512
@@ -17,7 +19,7 @@ def test_buffer_block_size():
     assert buffer.block_size == block_size
 
     new_block_size = 128
-    buffer.block_size = int(new_block_size)
+    buffer.block_size = new_block_size
     assert buffer._block_size == new_block_size
 
     with pytest.raises(
@@ -29,6 +31,7 @@ def test_buffer_block_size():
         _Buffer(float(10))
 
 
+@patch.multiple(_Buffer, __abstractmethods__=set())
 def test_buffer_state():
     block_size = 512
 

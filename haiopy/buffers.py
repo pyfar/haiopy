@@ -1,12 +1,12 @@
 import numpy as np
 import pyfar as pf
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from threading import Event
 from scipy import signal
 import warnings
 
 
-class _Buffer(object):
+class _Buffer(ABC):
     """Abstract base class for audio buffers for block-wise iteration.
 
     The base class primarily implements buffer state related functionality.
@@ -17,8 +17,8 @@ class _Buffer(object):
 
         Parameters
         ----------
-        block_size : _type_
-            _description_
+        block_size : int
+            The block size in samples.
         """
         self._check_block_size(block_size)
         self._block_size = block_size
@@ -106,7 +106,8 @@ class _Buffer(object):
         """Stop buffer iteration and set the state to inactive."""
         self._is_active.clear()
         self._is_finished.set()
-        raise StopIteration(msg)
+        if msg is not None:
+            raise StopIteration(msg)
 
     def _start(self):
         """Set the state to active.
