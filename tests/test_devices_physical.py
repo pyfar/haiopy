@@ -16,7 +16,9 @@ def default_device_multiface_fireface(kind='both'):
         'Fireface',
         'Scarlett 2i4',
         'MADIface',
-        'Focusrite USB ASIO']
+        'Focusrite USB ASIO',
+        'Steinberg USB ASIO',
+    ]
 
     for valid_device in valid_devices:
         for identifier, device in enumerate(device_list):
@@ -34,13 +36,23 @@ def default_device_multiface_fireface(kind='both'):
                     reason="CI does not have a soundcard")
 def test_default_device_helper():
     identifier, device = default_device_multiface_fireface()
+    device_names = [
+        'Fireface',
+        'Multiface',
+        'Scarlett 2i4',
+        'MADIface',
+        'Focusrite USB ASIO',
+        'Steinberg USB ASIO',
+    ]
+    assert any(
+        name in sd.query_devices(identifier)['name'] for name in device_names)
+
     fireface = 'Fireface' in sd.query_devices(identifier)['name']
     multiface = 'Multiface' in sd.query_devices(identifier)['name']
     scarlett = 'Scarlett 2i4' in sd.query_devices(identifier)['name']
     madiface = 'MADIface' in sd.query_devices(identifier)['name']
     focusrite = 'Focusrite USB ASIO' in sd.query_devices(identifier)['name']
-
-    assert fireface or multiface or scarlett or madiface or focusrite
+    steinberg = 'Steinberg USB ASIO' in sd.query_devices(identifier)['name']
 
     if fireface:
         assert device['max_input_channels'] == 18
@@ -57,6 +69,10 @@ def test_default_device_helper():
     if focusrite:
         assert device['max_input_channels'] == 2
         assert device['max_output_channels'] == 2
+
+    if steinberg:
+        assert device['max_input_channels'] == 6
+        assert device['max_output_channels'] == 6
 
 # -----------------------------------------------------------------------------
 # Output Device Tests
