@@ -1,3 +1,6 @@
+# activate ASIO support
+import os
+os.environ["SD_ENABLE_ASIO"] = "1"
 from haiopy import devices
 import sounddevice as sd
 import pytest
