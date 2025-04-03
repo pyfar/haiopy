@@ -1,12 +1,12 @@
 import numpy as np
 import pyfar as pf
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from threading import Event
 from scipy import signal
 import warnings
 
 
-class _Buffer(object):
+class _Buffer(ABC):
     """Abstract base class for audio buffers for block-wise iteration.
 
     The base class primarily implements buffer state related functionality.
@@ -17,8 +17,8 @@ class _Buffer(object):
 
         Parameters
         ----------
-        block_size : _type_
-            _description_
+        block_size : int
+            The block size in samples.
         """
         self._check_block_size(block_size)
         self._block_size = block_size
@@ -106,9 +106,7 @@ class _Buffer(object):
         """Stop buffer iteration and set the state to inactive."""
         self._is_active.clear()
         self._is_finished.set()
-        if msg is None:
-            pass
-        else:
+        if msg is not None:
             raise StopIteration(msg)
 
     def _start(self):
@@ -124,6 +122,39 @@ class _Buffer(object):
         self._is_active.clear()
         self._is_finished.clear()
         raise StopIteration("Resetting the buffer.")
+
+
+class EmptyBuffer(_Buffer):
+    """Empty buffer which does not contain or store any data.
+
+    This buffer is used to initialize I/O Devices without a specific buffer
+    in mind. The buffer is not iterable and will raise an error if attempted to
+    be iterated. The buffer size is always `None`.
+    """
+
+    def __init__(self, block_size=512, n_channels=1, sampling_rate=44100):
+        super().__init__(block_size=block_size)
+        self._n_channels = n_channels
+        self._sampling_rate = sampling_rate
+
+    @property
+    def n_channels(self):
+        """Return the number of channels."""
+        return self._n_channels
+
+    @property
+    def sampling_rate(self):
+        """Return the sampling rate."""
+        return self._sampling_rate
+
+    def next(self):
+        """Return None"""
+        warnings.warn(
+            "Buffer is empty. Please provide a valid buffer.", UserWarning)
+        # The stop method will raise a StopIteration exception which
+        # will be caught in the device class. Only the warning will be
+        # visible to users.
+        self._stop("This is an empty buffer.")
 
 
 class SignalBuffer(_Buffer):
