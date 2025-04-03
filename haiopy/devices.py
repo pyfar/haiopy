@@ -3,7 +3,7 @@ from multiprocessing import Event
 import numpy as np
 import sys
 import sounddevice as sd
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 
 from haiopy.buffers import SignalBuffer
 import pyfar as pf
@@ -13,7 +13,7 @@ def list_devices():
     pass
 
 
-class _Device(object):
+class _Device(metaclass=ABCMeta):
     def __init__(
             self,
             name,
@@ -31,17 +31,37 @@ class _Device(object):
         return self._name
 
     @property
-    def id(self):
-        return self._id
-
     def sampling_rate(self):
+        """Sampling rate of the device."""
         return self._sampling_rate
 
+    @sampling_rate.setter
+    @abstractmethod
+    def sampling_rate(self, sampling_rate):
+        """Set the sampling rate of the device."""
+        raise NotImplementedError('Needs to be implemented in child class.')
+
+    @property
     def block_size(self):
+        """Block size used by the device."""
         return self._block_size
 
+    @block_size.setter
+    @abstractmethod
+    def block_size(self, block_size):
+        """Set the block size of the device."""
+        raise NotImplementedError('Needs to be implemented in child class.')
+
+    @property
     def dtype(self):
+        """Data type of the devices audio buffer."""
         return self._dtype
+
+    @dtype.setter
+    @abstractmethod
+    def dtype(self, dtype):
+        """Set the data type of the device."""
+        raise NotImplementedError('Needs to be implemented in child class.')
 
 
 class AudioDevice(_Device):
