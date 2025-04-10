@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import sounddevice as sd
 from abc import abstractmethod, ABCMeta
+import platform
 
 from haiopy.buffers import SignalBuffer
 import pyfar as pf
@@ -164,6 +165,183 @@ class AudioDevice(_Device):
     @abstractmethod
     def _close_stream(self):
         raise NotImplementedError()
+
+
+class ChannelMapping(metaclass=ABCMeta):
+    """Class to handle the channel mapping of the device.
+
+    Parameters
+    ----------
+    channels : list
+        The channels to be used by the device.
+    """
+    _valid_apis_windows = [
+        'asio',
+        'windows directsound', 'directsound',
+        'windows wdm-ks', 'wdm',
+        'windows wasapi', 'wsapi']
+    _valid_apis_linux = [
+        'alsa',
+        'oss',
+        'pulse',
+        'jack']
+    _valid_apis_darwin = [
+        'coreaudio']
+
+    _valid_apis = {
+        'Windows': _valid_apis_windows,
+        'Linux': _valid_apis_linux,
+        'Darwin': _valid_apis_darwin
+    }
+
+    _default_apis = {
+        'Windows': 'asio',
+        'Linux': 'alsa',
+        'Darwin': 'coreaudio'
+    }
+
+    def __init__(self, channels, n_channels_device, api):
+
+        if api.lower() not in self._valid_apis[platform.system()]:
+            raise ValueError(
+                f"Invalid driver {api}. For your platform supported drivers"
+                f" are: f{self._valid_apis[platform.system()]}")
+
+        self._api = api.lower()
+        self._n_channels_device = n_channels_device
+        self.channels = channels
+
+    @property
+    def channels(self):
+        """The channels to be used by the device."""
+        return self._channels
+
+    @channels.setter
+    @abstractmethod
+    def channels(self, channels):
+        """Set the channels to be used by the device."""
+        raise NotImplementedError()
+
+    @property
+    def n_channels_used(self):
+        return len(self._channels)
+
+    @property
+    def n_channels_device(self):
+        """The number of channels supported by the device."""
+        return self._n_channels_device
+
+    @n_channels_device.setter
+    def n_channels_device(self, n_channels_device):
+        """Set the number of channels supported by the device."""
+        self._n_channels_device = n_channels_device
+
+    @property
+    def n_channels_mapping(self):
+        """The number of output channels required for the stream.
+
+        This includes a number of unused pre-pended channels which need to be
+        filled with zeros before writing the portaudio buffer. In case of
+        using only the first channel, portaudio plays back a mono signal,
+        which will be broadcast to the first two channels. To avoid this,
+        the minimum number of channels opened is always two, the unused second
+        channel is filled with zeros.
+        """
+        if self.extra_settings is not None:
+            return self.n_channels_used
+        else:
+            return np.max((2, np.max(self._channels) + 1))
+
+    @property
+    def extra_settings(self):
+        """The extra settings for the device."""
+        return self._extra_settings
+
+    def __call__(
+            self,
+            data_buffer: np.ndarray[float]) -> np.ndarray[float]:
+
+        if self._api in ['asio', 'coreaudio']:
+            # ASIO and CoreAudio handle the routing
+            return np.atleast_2d(data_buffer).T
+
+        # Write a block to an array with all required output channels
+        # including zeros for unused channels. Required if the routing
+        # is not handled by ASIO or CoreAudio. Sounddevice alone does
+        # not support routing matrices
+        data = data_buffer
+        block_size = data_buffer.shape[-1]
+
+        size_matches = block_size == self.n_channels_mapping
+
+        if not self._stream_block_out or not size_matches:
+            self._stream_block_out = np.zeros(
+                (self.n_channels_mapping, block_size),
+                dtype=data.dtype)
+        self._stream_block_out[self.channels] = data
+
+        return self._stream_block_out.T
+
+
+class InputChannelMapping(ChannelMapping):
+
+    def __init__(self, channels, n_channels_device, api):
+        super().__init__(channels, n_channels_device, api)
+        # self.channels = channels
+
+    @ChannelMapping.channels.setter
+    def channels(self, channels):
+        """Set the channels to be used by the device."""
+        if np.any(np.asarray(channels) > self.n_channels_device):
+            raise ValueError(
+                f"Invalid channels {channels}. The device only supports "
+                f"{self.n_channels_device} channels.")
+
+        if 'asio' in self._api:
+            extra_settings = sd.AsioSettings(
+                channel_selectors=channels)
+
+        elif 'coreaudio' in self._api:
+            extra_settings = sd.CoreAudioSettings(
+                channel_map=channels)
+        else:
+            extra_settings = None
+            self._stream_block_out = None
+
+        self._channels = channels
+        self._extra_settings = extra_settings
+
+
+class OutputChannelMapping(ChannelMapping):
+
+    def __init__(self, channels, n_channels_device, api):
+        super().__init__(channels, n_channels_device, api)
+
+    @ChannelMapping.channels.setter
+    def channels(self, channels):
+        """Set the channels to be used by the device."""
+        if np.any(np.asarray(channels) > self.n_channels_device):
+            raise ValueError(
+                f"Invalid channels {channels}. The device only supports "
+                f"{self.n_channels_device} channels.")
+
+        if 'asio' in self._api:
+            extra_settings = sd.AsioSettings(
+                channel_selectors=channels)
+
+        elif 'coreaudio' in self._api:
+            channel_map = np.ones(
+                self.n_channels_device, dtype=int) * -1
+            channel_map[channels] = channels
+
+            extra_settings = sd.CoreAudioSettings(
+                channel_map=channel_map)
+        else:
+            extra_settings = None
+            self._stream_block_out = None
+
+        self._channels = channels
+        self._extra_settings = extra_settings
 
 
 class OutputAudioDevice(AudioDevice):
