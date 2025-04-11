@@ -259,12 +259,28 @@ class _ChannelMapping(metaclass=ABCMeta):
 
     @property
     def extra_settings(self) -> sd.AsioSettings | sd.CoreAudioSettings | None:
-        """The extra settings for the device."""
+        """The sounddevice extra settings for the device.
+
+        These are specific to python-sounddevice and are used when opening the
+        portaudio stream.
+        """
         return self._extra_settings
 
     def __call__(
             self,
             data_buffer: np.ndarray[float]) -> np.ndarray[float]:
+        """Apply the mapping defined by the object to a data buffer.
+
+        Parameters
+        ----------
+        data_buffer : np.ndarray[float]
+            The input data buffer with shape (n_channels, block_size).
+
+        Returns
+        -------
+        np.ndarray[float]
+            The output data buffer with shape (n_channels_mapping, block_size).
+        """
 
         if self._api in ['asio', 'coreaudio']:
             # ASIO and CoreAudio handle the routing
