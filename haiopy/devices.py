@@ -200,7 +200,11 @@ class _ChannelMapping(metaclass=ABCMeta):
         'Darwin': 'coreaudio'
     }
 
-    def __init__(self, channels, n_channels_device, api):
+    def __init__(
+            self,
+            channels: list[int],
+            n_channels_device: int,
+            api: str):
 
         if api.lower() not in self._valid_apis[platform.system()]:
             raise ValueError(
@@ -212,32 +216,33 @@ class _ChannelMapping(metaclass=ABCMeta):
         self.channels = channels
 
     @property
-    def channels(self):
+    def channels(self) -> list[int]:
         """The channels to be used by the device."""
         return self._channels
 
     @channels.setter
     @abstractmethod
-    def channels(self, channels):
+    def channels(self, channels: list[int]):
         """Set the channels to be used by the device."""
         raise NotImplementedError()
 
     @property
-    def n_channels_used(self):
+    def n_channels_used(self) -> int:
+        """The number of channels containing data."""
         return len(self._channels)
 
     @property
-    def n_channels_device(self):
+    def n_channels_device(self) -> int:
         """The number of channels supported by the device."""
         return self._n_channels_device
 
     @n_channels_device.setter
-    def n_channels_device(self, n_channels_device):
+    def n_channels_device(self, n_channels_device: int):
         """Set the number of channels supported by the device."""
         self._n_channels_device = n_channels_device
 
     @property
-    def n_channels_mapping(self):
+    def n_channels_mapping(self) -> int:
         """The number of output channels required for the stream.
 
         This includes a number of unused pre-pended channels which need to be
@@ -253,7 +258,7 @@ class _ChannelMapping(metaclass=ABCMeta):
             return np.max((2, np.max(self._channels) + 1))
 
     @property
-    def extra_settings(self):
+    def extra_settings(self) -> sd.AsioSettings | sd.CoreAudioSettings | None:
         """The extra settings for the device."""
         return self._extra_settings
 
@@ -285,12 +290,15 @@ class _ChannelMapping(metaclass=ABCMeta):
 
 class InputChannelMapping(_ChannelMapping):
 
-    def __init__(self, channels, n_channels_device, api):
+    def __init__(
+            self,
+            channels: list[int],
+            n_channels_device: int,
+            api: str):
         super().__init__(channels, n_channels_device, api)
-        # self.channels = channels
 
-    @ChannelMapping.channels.setter
-    def channels(self, channels):
+    @_ChannelMapping.channels.setter
+    def channels(self, channels: list[int]):
         """Set the channels to be used by the device."""
         if np.any(np.asarray(channels) > self.n_channels_device):
             raise ValueError(
@@ -314,11 +322,15 @@ class InputChannelMapping(_ChannelMapping):
 
 class OutputChannelMapping(_ChannelMapping):
 
-    def __init__(self, channels, n_channels_device, api):
+    def __init__(
+            self,
+            channels: list[int],
+            n_channels_device: int,
+            api: str):
         super().__init__(channels, n_channels_device, api)
 
-    @ChannelMapping.channels.setter
-    def channels(self, channels):
+    @_ChannelMapping.channels.setter
+    def channels(self, channels: list[int]):
         """Set the channels to be used by the device."""
         if np.any(np.asarray(channels) > self.n_channels_device):
             raise ValueError(
