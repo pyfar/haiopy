@@ -175,6 +175,7 @@ class _ChannelMapping(metaclass=ABCMeta):
     channels : list
         The channels to be used by the device.
     """
+
     _valid_apis_windows = [
         'asio',
         'windows directsound', 'directsound',
@@ -191,13 +192,13 @@ class _ChannelMapping(metaclass=ABCMeta):
     _valid_apis = {
         'Windows': _valid_apis_windows,
         'Linux': _valid_apis_linux,
-        'Darwin': _valid_apis_darwin
+        'Darwin': _valid_apis_darwin,
     }
 
     _default_apis = {
         'Windows': 'asio',
         'Linux': 'alsa',
-        'Darwin': 'coreaudio'
+        'Darwin': 'coreaudio',
     }
 
     def __init__(
@@ -309,7 +310,6 @@ class InputChannelMapping(_ChannelMapping):
 
     Examples
     --------
-
     Create a mapping for a device with 8 channels and use only the second
     channel. The input data is a 2D array with shape (1, 512).
     After calling the mapping, the output data is a 2D array with shape
@@ -326,6 +326,7 @@ class InputChannelMapping(_ChannelMapping):
     >>> device(input_data)
 
     """
+
     def __init__(
             self,
             channels: list[int],
@@ -361,7 +362,6 @@ class OutputChannelMapping(_ChannelMapping):
 
     Examples
     --------
-
     Create a mapping for a device with 8 channels and use only the second
     channel. The input data is a 2D array with shape (1, 512).
     After calling the mapping, the output data is a 2D array with shape
