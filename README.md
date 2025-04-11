@@ -1,13 +1,8 @@
-<h1 align="center">
-<img src="https://github.com/pyfar/gallery/raw/main/docs/resources/logos/pyfar_logos_fixed_size_haiopy.png" width="300">
-</h1><br>
-
-
-
 [![PyPI version](https://badge.fury.io/py/haiopy.svg)](https://badge.fury.io/py/haiopy)
 [![Documentation Status](https://readthedocs.org/projects/haiopy/badge/?version=latest)](https://haiopy.readthedocs.io/en/latest/?badge=latest)
 [![CircleCI](https://circleci.com/gh/pyfar/haiopy.svg?style=shield)](https://circleci.com/gh/pyfar/haiopy)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/pyfar/gallery/main?labpath=docs/gallery/interactive/pyfar_introduction.ipynb)
+
 Python package for audio input/output and acoustic measurements
 
 Getting Started
