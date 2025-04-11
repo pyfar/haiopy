@@ -289,7 +289,27 @@ class _ChannelMapping(metaclass=ABCMeta):
 
 
 class InputChannelMapping(_ChannelMapping):
+    """Class to handle the input channel mapping of an audio device.
 
+    Examples
+    --------
+
+    Create a mapping for a device with 8 channels and use only the second
+    channel. The input data is a 2D array with shape (1, 512).
+    After calling the mapping, the output data is a 2D array with shape
+    (512, 2), where the first channel is filled with zeros and the second
+    channel is filled with the input data.
+
+    >>> import numpy as np
+    >>> from haiopy.devices import InputChannelMapping
+    >>> input_data = np.random.randn((1, 512), dtype='float32')
+    >>> device = InputChannelMapping(
+    ...     channels=[2],
+    ...     n_channels_device=8,
+    ...     api='wasapi')
+    >>> device(input_data)
+
+    """
     def __init__(
             self,
             channels: list[int],
@@ -321,6 +341,27 @@ class InputChannelMapping(_ChannelMapping):
 
 
 class OutputChannelMapping(_ChannelMapping):
+    """Class to handle the output channel mapping of an audio device.
+
+    Examples
+    --------
+
+    Create a mapping for a device with 8 channels and use only the second
+    channel. The input data is a 2D array with shape (1, 512).
+    After calling the mapping, the output data is a 2D array with shape
+    (512, 2), where the first channel is filled with zeros and the second
+    channel is filled with the input data.
+
+    >>> import numpy as np
+    >>> from haiopy.devices import InputChannelMapping
+    >>> input_data = np.random.randn((1, 512), dtype='float32')
+    >>> device = InputChannelMapping(
+    ...     channels=[2],
+    ...     n_channels_device=8,
+    ...     api='wasapi')
+    >>> device(input_data)
+
+    """
 
     def __init__(
             self,
