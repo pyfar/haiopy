@@ -167,7 +167,7 @@ class AudioDevice(_Device):
         raise NotImplementedError()
 
 
-class ChannelMapping(metaclass=ABCMeta):
+class _ChannelMapping(metaclass=ABCMeta):
     """Class to handle the channel mapping of the device.
 
     Parameters
@@ -283,7 +283,7 @@ class ChannelMapping(metaclass=ABCMeta):
         return self._stream_block_out.T
 
 
-class InputChannelMapping(ChannelMapping):
+class InputChannelMapping(_ChannelMapping):
 
     def __init__(self, channels, n_channels_device, api):
         super().__init__(channels, n_channels_device, api)
@@ -312,7 +312,7 @@ class InputChannelMapping(ChannelMapping):
         self._extra_settings = extra_settings
 
 
-class OutputChannelMapping(ChannelMapping):
+class OutputChannelMapping(_ChannelMapping):
 
     def __init__(self, channels, n_channels_device, api):
         super().__init__(channels, n_channels_device, api)
