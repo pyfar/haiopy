@@ -65,6 +65,9 @@ class _Device(metaclass=ABCMeta):
 
 
 class AudioDevice(_Device):
+    """Abstract class implementing audio devices based on python-sounddevice.
+    """
+
     def __init__(
             self,
             identifier=0,
@@ -79,9 +82,9 @@ class AudioDevice(_Device):
             name=sd.query_devices(identifier)['name'],
             sampling_rate=sampling_rate,
             block_size=block_size,
-            dtype=dtype
+            dtype=dtype,
         )
-        self._id = identifier
+        self._identifier = identifier
 
         self._callback = None
         self._stream = None
@@ -91,17 +94,19 @@ class AudioDevice(_Device):
         self._stream_finished = Event()
 
     @property
-    def id(self):
-        return self._id
+    def identifier(self):
+        """The identifier of the device."""
+        return self._identifier
 
     @abstractmethod
-    def check_settings(**kwargs):
+    def check_settings():
+        """Check if settings are compatible with the physical device.
+        """
         raise NotImplementedError('Needs to be implemented in child class.')
 
     @property
     def name(self):
-        """The name of the device
-        """
+        """The name of the device."""
         return self._name
 
     @property
@@ -111,20 +116,26 @@ class AudioDevice(_Device):
         return self._stream
 
     def _stream_active(self):
+        """Check if the stream is active."""
         return self.stream.active if self.stream is not None else False
 
     def finished_callback(self) -> None:
-        """Custom callback after a audio stream has finished."""
-        print("I'm finished.")
+        """Custom callback after a audio stream has finished.
+        Can be overwritten by users.
+        """
+        pass
 
     def _finished_callback(self) -> None:
-        """Private portaudio callback after a audio stream has finished."""
+        """Private portaudio callback after a audio stream has finished.
+
+        Ensures that the buffer is stopped.
+        """
         self._stream_finished.set()
         self.finished_callback()
         self.stream.stop()
 
     def start(self):
-        """Start the audio stream"""
+        """Start the audio stream and consume the buffer."""
         if self.stream.closed:
             print("Stream is closed. Try re-initializing.", file=sys.stderr)
             return
@@ -136,11 +147,11 @@ class AudioDevice(_Device):
             print("Stream is already active.", file=sys.stderr)
 
     def wait(self):
-        """Wait for the audio stream to finish."""
+        """Wait for the audio stream to finish the buffer."""
         self._stream_finished.wait(timeout=None)
 
     def abort(self):
-        """Stop the audio steam without finishing remaining buffers."""
+        """Stop the audio steam without finishing remaining callbacks."""
         if self.stream.active is True:
             self.stream.abort()
             self._stop_buffer()
@@ -152,7 +163,7 @@ class AudioDevice(_Device):
             self._stop_buffer()
 
     def stop(self):
-        """Stop the audio stream after finishing the current buffer."""
+        """Stop the audio stream after finishing all remaining callbacks."""
         if self.stream.active is True:
             self.stream.stop()
             self._stop_buffer()
