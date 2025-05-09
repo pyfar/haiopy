@@ -618,9 +618,9 @@ class OutputAudioDevice(AudioDevice):
 
         self._output_buffer = buffer
 
-    @property
-    def identifier(self):
-        return self._identifier
+    def _buffer_active(self) -> bool:
+        """Check if the output buffer is active."""
+        return False if self._output_buffer is None else self.output_buffer.is_active
 
     @identifier.setter
     def identifier(self, identifier):
