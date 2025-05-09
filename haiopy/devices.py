@@ -9,8 +9,89 @@ from haiopy.buffers import EmptyBuffer
 from haiopy.buffers import _Buffer
 
 
-def list_devices():
-    pass
+_valid_apis_windows = {
+    'mme': 0,
+    'windows directsound': 1,
+    'directsound': 1,
+    'asio': 2,
+    'windows wasapi': 3,
+    'wasapi': 3,
+    'windows wdm-ks': 4,
+    'wdm': 4,
+}
+_valid_apis_linux = [
+    'alsa',
+    'oss',
+    'pulse',
+    'jack']
+_valid_apis_darwin = [
+    'coreaudio']
+
+_valid_apis = {
+    'Windows': _valid_apis_windows,
+    'Linux': _valid_apis_linux,
+    'Darwin': _valid_apis_darwin,
+}
+
+_default_apis = {
+    'Windows': 2,
+    'Linux': 1,
+    'Darwin': 0,
+}
+
+
+def query_devices(
+        device: int | str = None,
+        kind: str | None = None,
+        host_api: str | None = None):
+    """Query the devices available on the system.
+
+    Parameters
+    ----------
+    device : int | str
+        The device to be queried. If None, all available devices are returned.
+    kind : str
+        The kind of device to be queried. Can be 'input' or 'output'.
+    host_api : str
+        The host API to be used. If None, the default API is used, which depends on the
+        operating system. For Windows, the default API is ASIO, for Linux it is ALSA,
+        and for macOS it is CoreAudio.
+    """
+
+    if device is None and host_api is None:
+        return sd.query_devices(device, kind)
+
+    # if device is None:
+    if host_api is not None:
+        device_ids = sd.query_hostapis(
+            _valid_apis[platform.system()][host_api.lower()])['devices']
+    else:
+        device_ids = sd.query_hostapis(
+            _default_apis[platform.system()])['devices']
+
+    device_list = []
+    for dev_id in device_ids:
+        if device is None:
+            try:
+                device_list.append(sd.query_devices(dev_id, kind))
+            except ValueError:
+                continue
+        elif device.lower() in sd.query_devices(dev_id)['name'].lower():
+            device_list.append(sd.query_devices(dev_id, kind))
+
+    if len(device_list) > 1:
+        return sd.DeviceList(device_list)
+
+    elif len(device_list) == 1:
+        if kind == 'output':
+            audio_device = OutputAudioDevice(
+                identifier=device_list[0]['index'],
+                sampling_rate=device_list[0]['default_samplerate'],
+            )
+        else:
+            raise ValueError('Unsupported device type.')
+
+    return audio_device
 
 
 class _Device(metaclass=ABCMeta):
