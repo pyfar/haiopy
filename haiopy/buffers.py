@@ -39,19 +39,20 @@ class _Buffer(ABC):
 
     @property
     def block_size(self):
-        """Returns the block size of the buffer in samples"""
+        """Returns the block size of the buffer in samples."""
         return self._block_size
 
     @block_size.setter
     def block_size(self, block_size):
-        """Set the block size in samples. Only integer values are supported"""
+        """Set the block size in samples.
+        """
         self._set_block_size(block_size)
 
     @property
     @abstractmethod
     def sampling_rate(self):
         """Return sampling rate."""
-        pass
+        raise NotImplementedError()
 
     @property
     @abstractmethod
@@ -75,7 +76,8 @@ class _Buffer(ABC):
     @property
     def is_active(self):
         """Return the state of the buffer.
-        `True` if the buffer is active, `False` if inactive."""
+        `True` if the buffer is active, `False` if inactive.
+        """
         return self._is_active.is_set()
 
     @property
@@ -112,13 +114,15 @@ class _Buffer(ABC):
     def _start(self):
         """Set the state to active.
         Additional operations required before iterating the sub-class can be
-        implemented in the respective sub-class."""
+        implemented in the respective sub-class.
+        """
         self._is_active.set()
         self._is_finished.clear()
 
     def _reset(self):
         """Stop and reset the buffer.
-        Resetting the buffer is implemented in the respective sub-class"""
+        Resetting the buffer is implemented in the respective sub-class.
+        """
         self._is_active.clear()
         self._is_finished.clear()
         raise StopIteration("Resetting the buffer.")
@@ -158,11 +162,10 @@ class EmptyBuffer(_Buffer):
 
 
 class SignalBuffer(_Buffer):
-    """Buffer to block wise iterate a `pyfar.Signal`
+    """Buffer to block wise iterate a `pyfar.Signal`.
 
     Examples
     --------
-
     >>> import pyfar as pf
     >>> from haiopy.buffers import SignalBuffer
     >>> block_size = 512
@@ -199,7 +202,7 @@ class SignalBuffer(_Buffer):
         self._index = 0
 
     def _pad_data(self, data):
-        """Pad the signal with zeros to avoid partially filled blocks
+        """Pad the signal with zeros to avoid partially filled blocks.
 
         Parameters
         ----------
@@ -229,8 +232,11 @@ class SignalBuffer(_Buffer):
 
     @sampling_rate.setter
     def sampling_rate(self, sampling_rate):
-        """Set new sampling_rate and resample the input Signal without
-        the padded zeros."""
+        """Set new sampling_rate and resample the input Signal.
+
+        The original length of the signal is used, i.e. without the zeros added
+        to match a integer multiple of the block size.
+        """
         signal = pf.Signal(data=self._data.time[..., :self._n_samples],
                            sampling_rate=self.sampling_rate,
                            n_samples=self._n_samples,
@@ -238,8 +244,10 @@ class SignalBuffer(_Buffer):
                            fft_norm=self._data._fft_norm,
                            comment=self._data.comment)
         self.data = pf.dsp.resample(signal, sampling_rate)
-        warnings.warn("Resampling the input Signal to sampling_rate="
-                      f"{sampling_rate} might generate artifacts.")
+        warnings.warn(
+            "Resampling the input Signal to sampling_rate="
+            f"{sampling_rate} might generate artifacts.",
+            stacklevel=2)
 
     @property
     def n_blocks(self):
@@ -266,8 +274,10 @@ class SignalBuffer(_Buffer):
         self._update_data()
 
     def _set_block_size(self, block_size):
-        """Set block_size and data without the padded zeros,
-        data setter will pad the data for the new blocksize."""
+        """Set the block_size, previously removing padded zeros.
+        The setter of the ``data`` property takes care of padding the data
+        array to match a integer multiple of the new block size.
+        """
         super()._set_block_size(block_size)
         self._data.time = self._data.time[..., :self._n_samples]
         # Use data setter to pad the data and update the strides
@@ -296,7 +306,7 @@ class SignalBuffer(_Buffer):
         self._stop("The buffer is empty.")
 
     def reset_index(self):
-        """Resets the index and the block-wise view of the underlying data"""
+        """Resets the index and the block-wise view of the underlying data."""
         self._is_active.clear()
         self._is_finished.set()
         self._index = 0
@@ -307,11 +317,10 @@ class SignalBuffer(_Buffer):
 
 
 class SineGenerator(_Buffer):
-    """Generator to block wise calculate a sinewave`
+    """Generator to block wise calculate a sinusoid.
 
     Examples
     --------
-
     >>> from haiopy.buffers import SineGenerator
     >>> import matplotlib.pyplot as plt
     >>> sine = SineGenerator(440, 128)
@@ -329,7 +338,7 @@ class SineGenerator(_Buffer):
                  amplitude=1,
                  sampling_rate=44100) -> None:
         """Initialize a `SineGenerator`with a given frequency, block_size,
-        amplitude and samplingrate.
+        amplitude and sampling rate.
 
         Parameters
         ----------
@@ -351,7 +360,7 @@ class SineGenerator(_Buffer):
 
     @property
     def frequency(self):
-        """Return the frequency of the sinewave"""
+        """Return the frequency of the sinusoid."""
         return self._frequency
 
     @frequency.setter
@@ -362,7 +371,7 @@ class SineGenerator(_Buffer):
 
     @property
     def amplitude(self):
-        """Return the amplitude of the sinewave"""
+        """Return the amplitude of the sinusoid."""
         return self._amplitude
 
     @amplitude.setter
@@ -373,7 +382,7 @@ class SineGenerator(_Buffer):
 
     @property
     def sampling_rate(self):
-        """Return the sampling rate of the generated sinewave."""
+        """Return the sampling rate of the generated sinusoid."""
         return self._sampling_rate
 
     @sampling_rate.setter
@@ -389,7 +398,7 @@ class SineGenerator(_Buffer):
 
     @property
     def phase(self):
-        """Return the current phase of the sinewave"""
+        """Return the current phase of the sinusoid."""
         return self._phase
 
     def _set_block_size(self, block_size):
@@ -412,7 +421,11 @@ class SineGenerator(_Buffer):
 
 class NoiseGenerator(_Buffer):
     """Generator for block wise noise generation.
+
     Supports white and pink noise spectra.
+
+    Examples
+    --------
     >>> import pyfar as pf
     >>> from haiopy.buffers import NoiseGenerator
     >>> block_size = 22050
@@ -420,8 +433,8 @@ class NoiseGenerator(_Buffer):
     >>> data = next(noise)
     >>> pf.plot.time_freq(pf.Signal(data, 44100))
 
-
     """
+
     def __init__(self,
                  block_size,
                  spectrum="white",
