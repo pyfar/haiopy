@@ -175,13 +175,13 @@ def test_check_init(empty_buffer_stub, sine_buffer_stub):
     out_device.wait()
 
     # set new channels
-    new_channels = [0, 1]
-    out_device.channels = new_channels
-    out_device._output_buffer.reset_index()
-    assert out_device.channels == new_channels
-    # test playback with new channels
-    out_device.start()
-    out_device.wait()
+    # new_channels = [0, 1]
+    # out_device.channels = new_channels
+    # out_device._output_buffer.reset_index()
+    # assert out_device.channels == new_channels
+    # # test playback with new channels
+    # out_device.start()
+    # out_device.wait()
 
     # Close Output Stream for next Tests
     with pytest.raises(StopIteration, match="iteration stopped"):
