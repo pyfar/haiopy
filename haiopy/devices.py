@@ -475,6 +475,17 @@ class OutputAudioDevice(AudioDevice):
         self.output_buffer = output_buffer
         self.initialize()
 
+    @property
+    def name(self) -> str:
+        """The name of the device."""
+        return sd.query_devices(self.identifier)['name']
+
+    @property
+    def host_api(self) -> str:
+        """The host API used by the device."""
+        return sd.query_hostapis(
+            sd.query_devices(self.identifier)['hostapi'])['name']
+
     def check_settings(
             self,
             n_channels=None,
@@ -501,7 +512,7 @@ class OutputAudioDevice(AudioDevice):
             raised.
         """
         sd.check_output_settings(
-            device=self.id,
+            device=self.identifier,
             channels=n_channels,
             dtype=dtype,
             extra_settings=extra_settings,
@@ -537,8 +548,9 @@ class OutputAudioDevice(AudioDevice):
 
     @property
     def max_channels_output(self):
-        """The number of output channels supported by the device"""
-        return sd.query_devices(self.id, 'output')['max_output_channels']
+        """The number of output channels supported by the device."""
+        return sd.query_devices(
+            self.identifier, 'output')['max_output_channels']
 
     def output_callback(self, outdata, frames, time, status) -> None:
         """Portudio callback for output streams
@@ -577,22 +589,22 @@ class OutputAudioDevice(AudioDevice):
         except StopIteration as e:
             raise sd.CallbackStop("Buffer empty") from e
 
-    def initialize(self):
-        """Initialize the playback stream for a given number of channels."""
-        # Init array buffering a block of all required output channels
-        # including zeros for unused channels. Required as sounddevice does
-        # not support routing matrices
-        self._stream_block_out = np.zeros(
-            (self._n_channels_stream, self.block_size), dtype=self.dtype)
+    def initialize(self) -> None:
+        """Initialize and open the playback stream.
+        This will set the device to active, potentially blocking the soundcard for other
+        applications. Playback is not yet started.
+        """
 
         ostream = sd.OutputStream(
-            self.sampling_rate,
-            self.block_size,
-            self.id,
-            self._n_channels_stream,
-            self._dtype,
+            samplerate=self.sampling_rate,
+            blocksize=self.block_size,
+            device=self.identifier,
+            channels=self.output_channel_mapping.n_channels_mapping,
+            dtype=self._dtype,
             callback=self.output_callback,
-            finished_callback=self._finished_callback)
+            finished_callback=self._finished_callback,
+            extra_settings=self.output_channel_mapping.extra_settings,
+        )
         self._stream = ostream
 
     def initialize_buffer(self):
