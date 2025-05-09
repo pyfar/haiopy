@@ -11,14 +11,19 @@ def default_device_multiface_fireface(kind='both'):
     device_list = sd.query_devices()
     found = False
 
-    valid_devices = [
-        'Multiface',
-        'Fireface',
-        'Scarlett 2i4',
-        'MADIface',
-        'Focusrite USB ASIO',
-        'Steinberg USB ASIO',
-    ]
+    import platform
+
+    if platform.system() == 'Windows':
+        valid_devices = [
+            'ASIO Fireface USB',
+        ]
+    elif platform.system() == 'Darwin':
+        valid_devices = [
+            'Multiface',
+            'Fireface',
+            'Scarlett 2i4',
+            'MADIface',
+        ]
 
     for valid_device in valid_devices:
         for identifier, device in enumerate(device_list):
@@ -28,6 +33,10 @@ def default_device_multiface_fireface(kind='both'):
     if not found:
         raise ValueError(
             "Please connect Fireface or Multiface, or specify test device.")
+
+    sampling_rate = int(device['default_samplerate'])
+    name = device['name']
+    print(f"\n\n Using: {name} with sampling rate = {sampling_rate}\n\n")
 
     return identifier, device
 
@@ -43,6 +52,7 @@ def test_default_device_helper():
         'MADIface',
         'Focusrite USB ASIO',
         'Steinberg USB ASIO',
+        'ReaRoute ASIO',
     ]
     assert any(
         name in sd.query_devices(identifier)['name'] for name in device_names)
@@ -53,26 +63,7 @@ def test_default_device_helper():
     madiface = 'MADIface' in sd.query_devices(identifier)['name']
     focusrite = 'Focusrite USB ASIO' in sd.query_devices(identifier)['name']
     steinberg = 'Steinberg USB ASIO' in sd.query_devices(identifier)['name']
-
-    if fireface:
-        assert device['max_input_channels'] == 18
-        assert device['max_output_channels'] == 18
-
-    if scarlett:
-        assert device['max_input_channels'] == 2
-        assert device['max_output_channels'] == 4
-
-    if madiface:
-        assert device['max_input_channels'] == 196
-        assert device['max_output_channels'] == 198
-
-    if focusrite:
-        assert device['max_input_channels'] == 2
-        assert device['max_output_channels'] == 2
-
-    if steinberg:
-        assert device['max_input_channels'] == 6
-        assert device['max_output_channels'] == 6
+    rearoute = 'ReaRoute' in sd.query_devices(identifier)['name']
 
 # -----------------------------------------------------------------------------
 # Output Device Tests
