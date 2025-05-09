@@ -424,6 +424,11 @@ class OutputChannelMapping(_ChannelMapping):
 
 
 class OutputAudioDevice(AudioDevice):
+    """Class implementing an output audio device.
+
+    The implementation is based on python-sounddevice and portaudio.
+
+    """
 
     def __init__(
             self,
@@ -705,18 +710,28 @@ class OutputAudioDevice(AudioDevice):
         self.initialize()
 
     def _stop_buffer(self):
+        """Stop the output buffer iteration.
+        This will raise a StopIteration exception in the buffer.
+        """
         self._output_buffer._stop()
 
     def _close_stream(self):
+        """Close the steam and stop the output buffer.
+        This will release the soundcard lock.
+        """
         if self.stream is not None:
             self.stream.close()
             self._output_buffer._stop(msg=None)
 
     def start(self):
+        """Start playback."""
+        if self._stream is None:
+            self.initialize()
         self.output_buffer._start()
         self.output_buffer._is_active.wait()
         super().start()
 
     def wait(self):
+        """Wait for the device to finish playback."""
         super().wait()
         self.output_buffer._is_finished.wait()
