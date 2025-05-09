@@ -435,44 +435,39 @@ class OutputAudioDevice(AudioDevice):
             identifier=sd.default.device['output'],
             sampling_rate=44100,
             block_size=512,
-            channels=[1],
+            channels=[0],
             dtype='float32',
             output_buffer=None,
-            latency=None,
-            extra_settings=None,
-            clip_off=None,
-            dither_off=None,
-            never_drop_input=None,
-            prime_output_buffers_using_stream_callback=None):
+        ):
 
         # First check the settings before continuing
-        max_channel = np.max(channels)
         n_channels = len(channels)
         sd.check_output_settings(
             device=identifier,
-            channels=np.max([n_channels, max_channel+1]),
+            channels=np.max([n_channels, np.max(channels)+1]),
             dtype=dtype,
-            extra_settings=extra_settings,
             samplerate=sampling_rate)
-        self._extra_settings = extra_settings
 
-        self._identifier = identifier
+        # Init base class
         super().__init__(
             identifier=identifier,
             sampling_rate=sampling_rate,
             block_size=block_size,
             dtype=dtype)
 
-        self._output_channels = channels
+        # Set the output channel mapping which is specific for each host api
+        self._output_channel_mapping = OutputChannelMapping(
+            channels, self.max_channels_output, self.host_api)
 
+        # Set the output buffer which will be consumed in the callback
+        # function. If no buffer is given, an empty buffer is created.
+        self._output_buffer = None
         if output_buffer is None:
-            output_buffer = SignalBuffer(
-                self.block_size,
-                pf.Signal(np.zeros(
-                        (self.n_channels_output, self.block_size),
-                        dtype=self.dtype),
-                    self.sampling_rate, fft_norm='rms'))
+            output_buffer = EmptyBuffer(
+                block_size, n_channels, sampling_rate)
         self.output_buffer = output_buffer
+
+        # Initialize the device
         self.initialize()
 
     @property
@@ -488,11 +483,11 @@ class OutputAudioDevice(AudioDevice):
 
     def check_settings(
             self,
-            n_channels=None,
-            sampling_rate=None,
-            dtype=None,
-            extra_settings=None):
-        """Check if settings are compatible with the physical devices.
+            n_channels: list[int] = None,
+            sampling_rate: int = None,
+            dtype: np.int8 | np.int16 | np.int32 | np.float32 = None,
+            extra_settings: sd.CoreAudioSettings | sd.AsioSettings | None = None):
+        """Check if settings are compatible with the physical device.
 
         Parameters
         ----------
@@ -508,8 +503,7 @@ class OutputAudioDevice(AudioDevice):
         Raises
         ------
         PortAudioError
-            If the settings are incompatible with the device an exception is
-            raised.
+            If the settings are incompatible with the device an exception is raised.
         """
         sd.check_output_settings(
             device=self.identifier,
@@ -519,8 +513,30 @@ class OutputAudioDevice(AudioDevice):
             samplerate=sampling_rate)
 
     @property
-    def output_channels(self):
-        return self._output_channels
+    def output_channel_mapping(self):
+        """The channel mapping of the device."""
+        return self._output_channel_mapping
+
+    @property
+    def output_channels(self) -> list[int]:
+        """The output channels of the device.
+        """
+        return self.output_channel_mapping.channels
+
+    @output_channels.setter
+    def output_channels(self, channels):
+        """Set the output channels of the device.
+
+        Parameters
+        ----------
+        channels : list
+            The output channels to be used by the device.
+        """
+
+        if self._stream_active() or self._buffer_active():
+            raise ValueError("The device is currently in use and needs to be closed first")
+        self._close_stream()
+        self.output_channel_mapping.channels = channels
 
     @property
     def n_channels_output(self):
@@ -531,20 +547,7 @@ class OutputAudioDevice(AudioDevice):
         int
             The number of output channels
         """
-        return len(self._output_channels)
-
-    @property
-    def _n_channels_stream(self):
-        """The number of output channels required for the stream.
-
-        This includes a number of unused pre-pended channels which need to be
-        filled with zeros before writing the portaudio buffer. In case of
-        using only the first channel, portaudio plays back a mono signal,
-        which will be broadcasted to the first two channels. To avoid this,
-        the minimum number of channels opened is always two, the unused second
-        channel is filled with zeros.
-        """
-        return np.max((2, np.max(self._output_channels) + 1))
+        return self.output_channel_mapping.n_channels_used
 
     @property
     def max_channels_output(self):
@@ -607,17 +610,28 @@ class OutputAudioDevice(AudioDevice):
         )
         self._stream = ostream
 
-    def initialize_buffer(self):
+    def initialize_buffer(self) -> None:
+        """Initialize the output buffer.
+        Starts the buffer and waits for it to be active.
+        """
         self.output_buffer._start()
         self.output_buffer._is_active.wait()
 
     @property
-    def output_buffer(self):
+    def output_buffer(self) -> type[_Buffer] | None:
+        """The output buffer which is consumed by the device.
+        """
         return self._output_buffer
 
     @output_buffer.setter
-    def output_buffer(self, buffer):
-        """Sets the output buffer"""
+    def output_buffer(self, buffer: type[_Buffer]):
+        """Set the output buffer which is consumed by the device.
+        The number of channels and the block size need to match the device settings.
+        """
+        if self._stream_active() or self._buffer_active():
+            raise ValueError(
+                "The device is currently in use and needs to be closed first")
+
         if buffer.block_size != self.block_size:
             raise ValueError(
                 "The buffer's block size does not match. ",
@@ -626,7 +640,8 @@ class OutputAudioDevice(AudioDevice):
         if buffer.n_channels != self.n_channels_output:
             raise ValueError(
                 "The buffer's channel number does not match the channel "
-                f"mapping. Currently used channels are {self.output_channels}")
+                f"mapping. A number of {self.n_channels_output} are currently "
+                f"used. These are {self.output_channels}")
 
         self._output_buffer = buffer
 
@@ -634,33 +649,12 @@ class OutputAudioDevice(AudioDevice):
         """Check if the output buffer is active."""
         return False if self._output_buffer is None else self.output_buffer.is_active
 
-    @identifier.setter
-    def identifier(self, identifier):
-        if self.stream.active is True or self.output_buffer.is_active is True:
-            raise ValueError(
-                "The device is currently in use and needs to be closed first")
-        self._close_stream()
-        max_channel = np.max(self._output_channels)
-        n_channels = len(self._output_channels)
-        sd.check_output_settings(
-            device=sd.query_devices(identifier)['name'],
-            channels=np.max([n_channels, max_channel+1]),
-            dtype=self._dtype,
-            extra_settings=self._extra_settings,
-            samplerate=self._sampling_rate)
-        self._id = sd.query_devices(identifier)['name']
-        self.initialize()
-
-    @property
-    def block_size(self):
-        return self._block_size
-
-    @block_size.setter
-    def block_size(self, block_size):
-        """Sets the blocksize of the OutputDevice and the output buffer.
-        Therefore, the current stream is closed and a new stream with setted
-        blocksize and output buffer is initialized."""
-        if self.stream.active is True or self.output_buffer.is_active is True:
+    @_Device.block_size.setter
+    def block_size(self, block_size: int):
+        """Sets the block size of the device and the output buffer.
+        Any open stream needs to be closed an re-opened. The output buffer is reset.
+        """
+        if self._stream_active() or self._buffer_active():
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
         self._close_stream()
@@ -668,16 +662,12 @@ class OutputAudioDevice(AudioDevice):
         self.output_buffer.block_size = block_size
         self.initialize()
 
-    @property
-    def sampling_rate(self):
-        return self._sampling_rate
-
-    @sampling_rate.setter
-    def sampling_rate(self, sampling_rate):
-        """Sets the sampling rate of the OutputDevice and the output buffer.
-        Therefore, the current stream is closed and a new stream with setted
-        samplingrate and output buffer is initialized."""
-        if self.stream.active is True or self.output_buffer.is_active is True:
+    @_Device.sampling_rate.setter
+    def sampling_rate(self, sampling_rate: int):
+        """Sets the sampling rate of the device.
+        Any open stream needs to be closed an re-opened.
+        """
+        if self._stream_active() or self._buffer_active():
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
         self.check_settings(sampling_rate=sampling_rate)
@@ -686,34 +676,12 @@ class OutputAudioDevice(AudioDevice):
         self.output_buffer.sampling_rate = sampling_rate
         self.initialize()
 
-    @property
-    def channels(self):
-        return self._output_channels
-
-    @channels.setter
-    def channels(self, channels):
-        """Sets the channels of the Output device. Therefore, the current
-        stream is closed and a new stream with setted channels is
-        initialized."""
-        if self.stream.active is True or self.output_buffer.is_active is True:
-            raise ValueError(
-                "The device is currently in use and needs to be closed first")
-        self._close_stream()
-        max_channel = np.max(channels)
-        n_channels = len(channels)
-        self.check_settings(n_channels=np.max([n_channels, max_channel+1]))
-        self._output_channels = channels
-        self.initialize()
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @dtype.setter
+    @_Device.dtype.setter
     def dtype(self, dtype):
-        """Sets the dtype of the output buffer. Therefore, the current stream
-        is closed and a new stream with setted dtype is initialized."""
-        if self.stream.active is True or self.output_buffer.is_active is True:
+        """Sets the dtype of the device buffer (portaudio specific).
+        Any open stream needs to be closed an re-opened.
+        """
+        if self._stream_active() or self._buffer_active():
             raise ValueError(
                 "The device is currently in use and needs to be closed first")
         self._close_stream()
