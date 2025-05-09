@@ -4,7 +4,6 @@ os.environ["SD_ENABLE_ASIO"] = "1"
 from haiopy import devices
 import sounddevice as sd
 import pytest
-import os
 
 
 def default_device_multiface_fireface(kind='both'):
