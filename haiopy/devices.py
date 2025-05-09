@@ -555,8 +555,13 @@ class OutputAudioDevice(AudioDevice):
         return sd.query_devices(
             self.identifier, 'output')['max_output_channels']
 
-    def output_callback(self, outdata, frames, time, status) -> None:
-        """Portudio callback for output streams
+    def output_callback(
+            self,
+            outdata: np.ndarray[float],
+            frames: int,
+            timestamp,  # noqa: ARG002
+            status: sd.CallbackFlags) -> None:
+        """Portudio callback for output streams.
 
         Parameters
         ----------
@@ -564,8 +569,9 @@ class OutputAudioDevice(AudioDevice):
             Output buffer view
         frames : int
             Length of the buffer
-        time : PaTimestamp
-            Timestamp of the callback event
+        timestamp : PaTimestamp
+            Timestamp of the callback event. This is a struct implemented in c and not directly
+            available. Only listed here since the number and order are required by portaudio.
         status : sounddevice.CallbackFlags
             Portaudio status flags
 
@@ -583,12 +589,7 @@ class OutputAudioDevice(AudioDevice):
         assert not status
 
         try:
-            # Write a block to an array with all required output channels
-            # including zeros for unused channels. Required as sounddevice does
-            # not support routing matrices
-            self._stream_block_out[self.output_channels] = next(
-                self.output_buffer)
-            outdata[:] = self._stream_block_out.T
+            outdata[:] = self.output_channel_mapping(next(self.output_buffer))
         except StopIteration as e:
             raise sd.CallbackStop("Buffer empty") from e
 
