@@ -1,4 +1,3 @@
-
 from multiprocessing import Event
 import numpy as np
 import sys
@@ -6,8 +5,8 @@ import sounddevice as sd
 from abc import abstractmethod, ABCMeta
 import platform
 
-from haiopy.buffers import SignalBuffer
-import pyfar as pf
+from haiopy.buffers import EmptyBuffer
+from haiopy.buffers import _Buffer
 
 
 def list_devices():
