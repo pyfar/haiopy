@@ -201,10 +201,18 @@ class EmptyBuffer(_Buffer):
         """Return the number of channels."""
         return self._n_channels
 
+    @n_channels.setter
+    def n_channels(self, n_channels: int):
+        self._n_channels = n_channels
+
     @property
     def sampling_rate(self):
         """Return the sampling rate."""
         return self._sampling_rate
+
+    @sampling_rate.setter
+    def sampling_rate(self, sampling_rate: int):
+        self._sampling_rate = sampling_rate
 
     def next(self):
         """Return None"""
