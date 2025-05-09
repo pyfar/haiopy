@@ -119,14 +119,8 @@ class _Buffer(ABC):
         return self
 
     def __next__(self):
-        """Next dunder method for iteration"""
+        """Next dunder method for iteration."""
         self._start()
-        return self.next()
-
-    @abstractmethod
-    def next(self):
-        """Next method which for sub-class specific handling of data."""
-        raise NotImplementedError()
 
     @property
     def is_active(self):
@@ -206,10 +200,13 @@ class EmptyBuffer(_Buffer):
         """Return the sampling rate."""
         return self._sampling_rate
 
-    def next(self):
-        """Return None"""
+    def __next__(self):
+        """Cast a warning and stop the iteration.
+        This buffer is empty by design and should not be iterated.
+        """
         warnings.warn(
-            "Buffer is empty. Please provide a valid buffer.", UserWarning)
+            "Buffer is empty. Please provide a valid buffer.",
+            UserWarning, stacklevel=2)
         # The stop method will raise a StopIteration exception which
         # will be caught in the device class. Only the warning will be
         # visible to users.
@@ -350,10 +347,11 @@ class SignalBuffer(_Buffer):
             (*self.data.cshape, self.n_blocks, self.block_size))
         self._index = 0
 
-    def next(self):
+    def __next__(self):
         """Return the next audio block as numpy array and increment the block
         index.
         """
+        super().__next__()
         if self._index < self._n_blocks:
             current = self._index
             self._index += 1
@@ -461,9 +459,10 @@ class SineGenerator(_Buffer):
         super()._set_block_size(block_size)
         self._phase = 0
 
-    def next(self):
+    def __next__(self):
         """Return the next audio block as numpy array and increases the phase.
         """
+        super().__next__()
         omega = 2 * np.pi * self._frequency
         data = self._amplitude * np.sin(
             omega*np.arange(self._block_size)/self._sampling_rate+self._phase)
@@ -590,10 +589,11 @@ class NoiseGenerator(_Buffer):
         self._seed = seed
         self._rng = np.random.default_rng(seed)
 
-    def next(self):
+    def __next__(self):
         """Return the next audio block as numpy array, and calculates data
         with seed_idx if seed is True.
         """
+        super().__next__()
         data = self._rng.standard_normal(self._block_size)
         if self._spectrum == "pink":
             # Apply Pink Noise Filter
