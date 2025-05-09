@@ -176,6 +176,13 @@ class AudioDevice(_Device):
     def _close_stream(self):
         raise NotImplementedError()
 
+    def __del__(self):
+        """Destructor for the AudioDevice.
+        Closes the sounddevice stream.
+        """
+        if self._stream_active():
+            self.stream.close()
+
 
 class _ChannelMapping(metaclass=ABCMeta):
     """Class to handle the channel mapping of the device.
@@ -716,3 +723,16 @@ class OutputAudioDevice(AudioDevice):
         """Wait for the device to finish playback."""
         super().wait()
         self.output_buffer._is_finished.wait()
+
+    def __del__(self):
+        """Destructor for the OutputDevice.
+        Closes the stream and stops the output buffer.
+        """
+        # Close the stream if it is still active
+        super().__del__()
+
+        # Stop the buffer if it is still active
+        if self._buffer_active():
+            self._stop_buffer(
+                'Output device has been closed. ',
+                'Stopping buffer iteration.')
