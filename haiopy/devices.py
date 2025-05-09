@@ -297,7 +297,7 @@ class _ChannelMapping(metaclass=ABCMeta):
         Returns
         -------
         np.ndarray[float]
-            The output data buffer with shape (n_channels_mapping, block_size).
+            The output data buffer with shape (block_size, n_channels_mapping).
         """
 
         if self._api in ['asio', 'coreaudio']:
@@ -319,7 +319,7 @@ class _ChannelMapping(metaclass=ABCMeta):
                 dtype=data.dtype)
         self._stream_block_out[self.channels] = data
 
-        return self._stream_block_out.T
+        return self._stream_block_out
 
 
 class InputChannelMapping(_ChannelMapping):
@@ -596,7 +596,7 @@ class OutputAudioDevice(AudioDevice):
         assert not status
 
         try:
-            outdata[:] = self.output_channel_mapping(next(self.output_buffer))
+            outdata[:] = self.output_channel_mapping(next(self.output_buffer)).T
         except StopIteration as e:
             raise sd.CallbackStop("Buffer empty") from e
 

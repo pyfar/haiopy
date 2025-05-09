@@ -37,3 +37,16 @@ def test_init_checks_linux(valid_apis):
 def test_init_checks_macos(valid_apis):
     OutputChannelMapping([0], 1, valid_apis)
     InputChannelMapping([0], 1, valid_apis)
+
+
+@patch('platform.system', new=lambda: 'Linux')
+def test_manual_mapping():
+    output_mapping = OutputChannelMapping([2, 3], 4, 'alsa')
+
+    data_block = np.ones((2, 512), dtype=float)
+    truth = np.vstack((
+        np.zeros_like(data_block),
+        data_block,
+    ))
+    np.testing.assert_array_equal(
+        output_mapping(data_block), truth)
