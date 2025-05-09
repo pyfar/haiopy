@@ -1,3 +1,58 @@
+"""
+This module implements different buffer types to provide block-wise iteration
+of audio data to be used in the I/O devices.
+
+All buffers are iterable and implement Python's built-in iterator
+functionality, see [#]_. The iteration is done by calling the
+:py:func:`__next__` method of the buffer, which returns data until the buffer
+is empty. On completion a :py:class:`StopIteration` exception is raised.
+
+For example, the :py:class:`SignalBuffer` can be used to iterate a
+:py:class:`pyfar.Signal`.
+
+.. code-block:: python
+
+    >>> from haiopy.buffers import SignalBuffer
+    >>> import pyfar as pf
+    >>> block_size = 4
+    >>> signal = pf.Signal([1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3])
+    >>> buffer = SignalBuffer(4, signal)
+    >>> data = next(buffer)
+    >>> print(data)
+    [1. 1. 1. 1.]
+    >>> data = next(buffer)
+    >>> print(data)
+    [2. 2. 2. 2.]
+
+Since the buffer is iterable, it can be used in a for loop as well:
+
+.. code-block:: python
+
+    >>> for block in buffer:
+    >>>     print(block)
+    [3. 3. 3. 3.]
+
+Once the buffer is empty, a :py:class:`StopIteration` exception is raised.
+
+.. code-block:: python
+
+    >>> data = next(buffer)
+    Traceback (most recent call last):
+        ...
+    StopIteration: The buffer is empty.
+
+
+Alternatively, audio data generators are provided, which can be used block-wise
+generate audio signals such as sinusoids or broadband noise
+(see :py:class:`SineGenerator` and :py:class:`NoiseGenerator`).
+Note that these generators are not finite and will not raise a
+:py:class:`StopIteration` exception. Instead, the user is responsible for
+stopping the iteration by calling the :py:meth:`_stop` method of the buffer
+or raising a :py:class:`StopIteration` exception manually.
+
+.. [#] https://docs.python.org/3/glossary.html#term-iterator
+
+"""
 import numpy as np
 import pyfar as pf
 from abc import abstractmethod, ABC
