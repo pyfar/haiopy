@@ -113,12 +113,13 @@ def test_sine_playback(sine_buffer_stub):
     buffer = sine_buffer_stub[0]
     identifier, config = default_device_multiface_fireface()
 
-    sampling_rate = config['default_samplerate']
+    sampling_rate = int(config['default_samplerate'])
 
     out_device = devices.OutputAudioDevice(
         identifier=identifier,
         output_buffer=buffer,
         channels=[1],
+        block_size=buffer.block_size,
         sampling_rate=sampling_rate)
     out_device.check_settings()
 
@@ -138,7 +139,7 @@ def test_check_init(empty_buffer_stub, sine_buffer_stub):
     buffer = sine_buffer_stub[0]
     identifier, config = default_device_multiface_fireface()
 
-    sampling_rate = config['default_samplerate']
+    sampling_rate = int(config['default_samplerate'])
 
     out_device = devices.OutputAudioDevice(
         identifier=identifier,
