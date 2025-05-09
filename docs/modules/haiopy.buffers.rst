@@ -1,5 +1,5 @@
-haiopy.buffers
-==============
+Buffers
+=======
 
 .. automodule:: haiopy.buffers
     :members:

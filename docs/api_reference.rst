@@ -16,7 +16,7 @@ Modules
 .. toctree::
    :maxdepth: 1
 
-   modules/haiopy
+   modules/haiopy.buffers
 
 
 .. _examples gallery: https://pyfar-gallery.readthedocs.io/en/latest/examples_gallery.html
