@@ -6,7 +6,7 @@ from haiopy.buffers import (
     SignalBuffer,
     EmptyBuffer
 )
-from haiopy.buffers import SineGenerator, NoiseGenerator
+from haiopy.buffers import SineGenerator, NoiseGenerator, LinearSweepGenerator
 import pytest
 import pyfar as pf
 from scipy import signal
@@ -260,7 +260,6 @@ def test_SineGenerator():
     # check if sine generator is active now
     assert sine.is_active is True
 
-
 def test_SineGenerator_updates():
     frequency = 440
     block_size = 512
@@ -434,6 +433,58 @@ def test_NoiseGenerator_updates():
     with pytest.raises(BufferError, match="needs to be inactive"):
         noise.seed = 123
 
+def test_LinearSweepGenerator():
+    block_size = 512
+    amplitude = 0.1
+    sampling_rate = 44100
+    f1 = 0
+    f2 = 20000
+    sweep_duration = 2
+
+    sweep = LinearSweepGenerator(block_size,
+                    amplitude,
+                    sweep_duration = sweep_duration,
+                    f_1 = f1,
+                    f_2 = f2,
+                    sampling_rate=sampling_rate)
+
+    # test getters with default
+    assert sweep.block_size == block_size
+    assert sweep.sampling_rate == 44100
+    assert sweep.amplitude == amplitude
+    assert sweep.f_1 == f1
+    assert sweep.f_2 == f2
+    assert sweep.sweep_duration == sweep_duration
+
+    assert sweep.n_channels == 1
+
+    # check if sweep generator is not active yet
+    assert sweep.is_active is False
+
+    # check first block
+    t_start = 0
+    n_samples = int(block_size)
+    t = np.arange(n_samples) / sampling_rate + t_start
+    w_1 = 2 * np.pi * f1
+    w_2 = 2 * np.pi * f2
+    sweep_data = (amplitude *
+            np.sin(w_1 * t + (w_2-w_1) / sweep_duration * t**2 / 2))
+    block_data = next(sweep)
+    npt.assert_array_equal(block_data, sweep_data)
+
+    # check if noise generator is active now
+    assert sweep.is_active is True
+
+    # check second block
+    t_start += block_size / sampling_rate
+    t = np.arange(n_samples) / sampling_rate + t_start
+    w_1 = 2 * np.pi * f1
+    w_2 = 2 * np.pi * f2
+    sweep_data = (amplitude *
+            np.sin(w_1 * t + (w_2-w_1) / sweep_duration * t**2 / 2))
+    
+    block_data = next(sweep)
+    npt.assert_array_equal(block_data, sweep_data)
 
 def test_sampling_rate_setter():
     # Test setting the sampling rate, resampling the Signal and updating data
